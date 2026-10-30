@@ -37,7 +37,7 @@ class ImportTests(unittest.TestCase):
             self.assertNotIn("api_key", path.read_text(encoding="utf-8"))
 
     def test_headerless_csv_named_title_is_not_dropped(self):
-        self.assertEqual(parse_source("Title of a Movie\\nAnother Movie\\n", ".csv"), ["Title of a Movie", "Another Movie"])
+        self.assertEqual(parse_source("Title of a Movie\nAnother Movie\n", ".csv"), ["Title of a Movie", "Another Movie"])
 
     def test_session_file_size_limit(self):
         with tempfile.TemporaryDirectory() as directory:
