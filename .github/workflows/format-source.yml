@@ -21,10 +21,12 @@ jobs:
           ref: refactor/readable-source
 
       - name: Install formatter
-        run: python3 -m pip install --user black==24.10.0
+        run: |
+          python3 -m venv /tmp/bulkrr-format-venv
+          /tmp/bulkrr-format-venv/bin/python -m pip install black==24.10.0
 
       - name: Format Python source
-        run: python3 -m black --line-length 88 bulkrr.py
+        run: /tmp/bulkrr-format-venv/bin/python -m black --line-length 88 bulkrr.py
 
       - name: Check Python syntax
         run: python3 -m py_compile bulkrr.py
