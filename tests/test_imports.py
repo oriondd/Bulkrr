@@ -36,6 +36,16 @@ class ImportTests(unittest.TestCase):
             self.assertEqual(load_session(path), ["movie: Alien", "tv: Lost"])
             self.assertNotIn("api_key", path.read_text(encoding="utf-8"))
 
+    def test_headerless_csv_named_title_is_not_dropped(self):
+        self.assertEqual(parse_source("Title of a Movie\\nAnother Movie\\n", ".csv"), ["Title of a Movie", "Another Movie"])
+
+    def test_session_file_size_limit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "session.json"
+            path.write_bytes(b" " * 5_000_001)
+            with self.assertRaisesRegex(ValueError, "5 MB"):
+                load_session(path)
+
     def test_invalid_session_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "bad.json"
