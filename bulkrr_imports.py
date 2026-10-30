@@ -39,11 +39,14 @@ def parse_source(text, suffix):
         return []
     header = [str(v).strip().casefold() for v in rows[0]]
     title_index = next((i for i, v in enumerate(header) if v in ("title", "name")), None)
+    has_header = title_index is not None
     type_index = next((i for i, v in enumerate(header) if v in ("type", "category", "media_type")), None)
     year_index = next((i for i, v in enumerate(header) if v == "year"), None)
-    data_rows = rows[1:] if title_index is not None else rows
+    data_rows = rows[1:] if has_header else rows
     if title_index is None:
         title_index = 0
+        type_index = None
+        year_index = None
     titles = []
     for row in data_rows:
         if title_index >= len(row):
@@ -88,7 +91,10 @@ def save_session(path, text):
 
 
 def load_session(path):
-    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    source = Path(path)
+    if source.stat().st_size > 5_000_000:
+        raise ValueError("Session file exceeds the 5 MB limit")
+    data = json.loads(source.read_text(encoding="utf-8"))
     if not isinstance(data, dict) or data.get("version") != SESSION_VERSION or not isinstance(data.get("titles"), list):
         raise ValueError("Unsupported or invalid Bulkrr session")
     if any(not isinstance(title, str) for title in data["titles"]):
