@@ -29,6 +29,24 @@ class Phase2GuiTests(unittest.TestCase):
             self.window.import_files([str(path)])
             self.assertEqual(self.window.input.toPlainText().splitlines(), ["movie: Alien", "tv: Lost"])
 
+    def test_review_actions_follow_selected_row(self):
+        self.window.items = [
+            {
+                "input": "movie: Alien",
+                "status": "review",
+                "selected": 0,
+                "matches": [{"label": "Alien", "app": "radarr", "type": "movie", "score": 1.0, "data": {"title": "Alien", "year": 1979}, "id": 1}],
+                "message": "Review",
+                "duplicate": None,
+            }
+        ]
+        self.window.refresh()
+        self.assertFalse(self.window.review_btn.isEnabled())
+        self.window.table.selectRow(0)
+        self.assertTrue(self.window.review_btn.isEnabled())
+        self.assertFalse(self.window.duplicate_btn.isEnabled())
+        self.assertFalse(self.window.add_btn.isEnabled())
+
     def test_review_summary_starts_empty(self):
         self.assertIn("No titles analyzed", self.window.review_summary_label.text())
 
