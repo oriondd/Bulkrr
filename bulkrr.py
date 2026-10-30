@@ -1284,12 +1284,13 @@ class Main(QMainWindow):
         if dialog.exec() == QDialog.DialogCode.Accepted and choices.currentRow() >= 0:
             previous = item.get("selected", -1)
             selected = choices.currentRow()
-            if item.get("duplicate") and selected != previous:
+            if selected != previous:
                 QMessageBox.information(
                     self,
                     "Reanalysis required",
-                    "This title was found in your library. To select a different metadata match, "
-                    "update its input title and run Analyze again so duplicate detection stays accurate.",
+                    "Selecting another metadata ID requires a fresh library check. "
+                    "Update the input title to identify your preferred match and run Analyze again "
+                    "so duplicate detection remains accurate.",
                 )
                 return
             item["selected"] = selected
