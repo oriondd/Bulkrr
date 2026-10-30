@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QSplitter,
     QSplashScreen,
+    QFileDialog,
 )
 
 ASSET_DIR = Path(__file__).resolve().parent
@@ -55,6 +56,9 @@ from bulkrr_api import get_json
 
 # Re-export these helpers for compatibility with existing integrations.
 from bulkrr_core import title_parts, similarity, candidate_score, classify, poster_url
+from bulkrr_imports import normalize_titles, read_source, save_session, load_session
+from bulkrr_review import review_summary, STATUS_LABELS, match_confidence
+from bulkrr_theme import DARK_THEME
 
 
 class PosterWorker(QThread):
@@ -322,12 +326,17 @@ class Worker(QThread):
                         f"[{i}/{len(self.items)}] Checking {obj['title']} in {app.title()} (metadata ID {m['id']}, type {typ})..."
                     )
                     self.row_progress.emit(
-                        self.items.index(item),
+                        i - 1,
                         "working",
                         "Checking for existing library entry...",
                     )
                     endpoint = "movie" if app == "radarr" else "series"
-                    existing = self.call(app, endpoint)
+                    try:
+                        existing = self.call(app, endpoint)
+                    except Exception as exc:
+                        results.append((item["input"], "red", f"Library check failed: {exc}"))
+                        self.progress.emit(f"  Could not verify {obj['title']} in {app.title()}: {exc}")
+                        continue
                     identifier = "tmdbId" if app == "radarr" else "tvdbId"
                     found = next(
                         (x for x in existing if str(x.get(identifier)) == str(m["id"])),
@@ -464,7 +473,7 @@ class Worker(QThread):
                         f"  Adding {obj['title']} to {folder}; quality profile ID={profile}; search after approval={self.config.get('search',True)}"
                     )
                     self.row_progress.emit(
-                        self.items.index(item),
+                        i - 1,
                         "working",
                         "Submitting to " + app.title() + "...",
                     )
@@ -485,13 +494,13 @@ class Worker(QThread):
                             f"  Added successfully: {obj['title']}; search request={'enabled' if self.config.get('search',True) else 'disabled'}"
                         )
                         self.row_progress.emit(
-                            self.items.index(item), "done", "Added successfully"
+                            i - 1, "done", "Added successfully"
                         )
                     except Exception as e:
                         results.append((item["input"], "red", str(e)[:300]))
                         self.progress.emit(f"  Failed: {obj['title']} — {e}")
                         self.row_progress.emit(
-                            self.items.index(item), "failed", str(e)[:180]
+                            i - 1, "failed", str(e)[:180]
                         )
                 self.finished_data.emit(results)
         except Exception as e:
@@ -587,18 +596,40 @@ class StatusLED(QWidget):
         painter.end()
 
 
+class TitleInput(QTextEdit):
+    """Text input accepting TXT and CSV drops; delegates file handling to Main."""
+
+    files_dropped = Signal(list)
+
+    def dragEnterEvent(self, event):
+        urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
+        if urls and all(url.isLocalFile() and Path(url.toLocalFile()).suffix.lower() in (".txt", ".csv") for url in urls):
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
+        if urls and all(url.isLocalFile() and Path(url.toLocalFile()).suffix.lower() in (".txt", ".csv") for url in urls):
+            self.files_dropped.emit([url.toLocalFile() for url in urls])
+            event.acceptProposedAction()
+        else:
+            super().dropEvent(event)
+
+
 class Main(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Bulkrr v1.5")
+        self.setWindowTitle("Bulkrr — Phase 2 preview")
         self.setWindowIcon(QIcon(str(ASSET_DIR / "Bulkrr.ico")))
-        self.resize(1000, 740)
+        self.resize(1120, 800)
         self.connections = {}
         self.server_data = {}
         self.items = []
         self.worker = None
         self.poster_cache = {}
         self.poster_workers = []
+        self.poster_inflight = {}
         self.poster_target = None
         self.settings = self.load_settings()
         tabs = QTabWidget()
@@ -674,14 +705,31 @@ class Main(QMainWindow):
                 "Paste one title per line. Optional prefixes: movie:, tv:, anime:. Year optional: (2012)."
             )
         )
-        self.input = QTextEdit()
+        self.input = TitleInput()
+        self.input.files_dropped.connect(self.import_files)
+        self.input.setAcceptDrops(True)
         self.input.setPlaceholderText(
             "movie: The Raid (2011)\ntv: Breaking Bad (2008)\nanime: Death Note (2006)"
         )
+        v.addWidget(QLabel("Drop .txt or .csv files here, or paste titles below."))
         v.addWidget(self.input)
+        source_row = QHBoxLayout()
+        for label, handler in (
+            ("Import TXT / CSV", self.choose_import_files),
+            ("Save title list", self.save_import_session),
+            ("Load title list", self.resume_import_session),
+        ):
+            button = QPushButton(label)
+            button.clicked.connect(handler)
+            source_row.addWidget(button)
+        v.addLayout(source_row)
         self.analyze_btn = QPushButton("Analyze titles (no changes)")
         self.analyze_btn.clicked.connect(self.analyze)
         v.addWidget(self.analyze_btn)
+        self.review_summary_label = QLabel(review_summary([]))
+        self.review_summary_label.setWordWrap(True)
+        self.review_summary_label.setObjectName("reviewSummary")
+        v.addWidget(self.review_summary_label)
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(
             [
@@ -695,7 +743,9 @@ class Main(QMainWindow):
             ]
         )
         self.table.setAlternatingRowColors(True)
+        self.table.setSortingEnabled(False)
         self.table.setMinimumHeight(270)
+        self.table.setToolTip("Select a row to inspect its poster and metadata; use Confirm to choose an alternate match.")
         self.table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
@@ -705,6 +755,7 @@ class Main(QMainWindow):
         self.table.setColumnWidth(0, 55)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.itemSelectionChanged.connect(self.show_selected_poster)
+        self.table.itemSelectionChanged.connect(self.update_review_actions)
         v.addWidget(self.table)
         preview = QGroupBox("Selected title — artwork and metadata")
         preview_layout = QHBoxLayout(preview)
@@ -733,7 +784,7 @@ class Main(QMainWindow):
         row.addWidget(self.review_btn)
         row.addWidget(self.add_btn)
         v.addLayout(row)
-        tabs.addTab(importer, "2. Bulk import")
+        tabs.addTab(importer, "2. Import & review")
         self.log = QTextEdit()
         self.log.setReadOnly(True)
         self.log.setPlaceholderText(
@@ -742,18 +793,8 @@ class Main(QMainWindow):
         tabs.addTab(self.log, "Activity log")
         self.tabs = tabs
         self.statusBar().showMessage("Connect to Radarr/Sonarr to begin")
-        self.setStyleSheet(
-            """
-          QMainWindow,QWidget {background:#151923;color:#e9edf6;font-size:13px}
-          QLineEdit,QTextEdit,QComboBox,QTableWidget {background:#222a37;color:#f3f6fc;border:1px solid #39465a;border-radius:5px;padding:5px}
-          QPushButton {background:#2874bd;color:white;border:0;border-radius:6px;padding:9px;font-weight:600}
-          QPushButton:hover {background:#358ad9}
-          QPushButton:disabled {background:#45505f;color:#aab2c1}
-          QGroupBox {border:1px solid #39465a;border-radius:8px;margin-top:12px;padding:10px}
-          QTabBar::tab {background:#242b38;padding:11px}
-          QTabBar::tab:selected {background:#2874bd}
-        """
-        )
+        self.setStyleSheet(DARK_THEME)
+        self.update_review_actions()
 
     def load_settings(self):
         try:
@@ -800,7 +841,9 @@ class Main(QMainWindow):
             )
         )
         self.worker.finished_data.connect(done)
+        self.worker.finished.connect(self.update_review_actions)
         self.worker.start()
+        self.update_review_actions()
 
     def connection_error(self):
         for app in self.connections:
@@ -922,13 +965,72 @@ class Main(QMainWindow):
         )
         self.tabs.setCurrentIndex(1)
 
+    def choose_import_files(self):
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Import title lists", "", "Title lists (*.txt *.csv)"
+        )
+        if paths:
+            self.import_files(paths)
+
+    def import_files(self, paths):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
+        try:
+            titles = normalize_titles(
+                self.input.toPlainText().splitlines()
+                + [title for path in paths for title in read_source(path)]
+            )
+        except (OSError, UnicodeError, ValueError) as error:
+            QMessageBox.warning(self, "File import failed", str(error))
+            return
+        self.input.setPlainText("\n".join(titles))
+        self.items = []
+        self.refresh()
+        self.logmsg(f"Loaded {len(paths)} file(s); {len(titles)} unique titles ready for analysis")
+
+    def save_import_session(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save import session", "bulkrr-session.json", "Bulkrr session (*.json)"
+        )
+        if not path:
+            return
+        try:
+            count = save_session(path, self.input.toPlainText())
+        except OSError as error:
+            QMessageBox.warning(self, "Session save failed", str(error))
+            return
+        self.logmsg(f"Saved session with {count} title(s)")
+
+    def resume_import_session(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Resume import session", "", "Bulkrr session (*.json)"
+        )
+        if not path:
+            return
+        try:
+            titles = load_session(path)
+        except (OSError, ValueError, UnicodeError) as error:
+            QMessageBox.warning(self, "Session load failed", str(error))
+            return
+        self.input.setPlainText("\n".join(titles))
+        self.items = []
+        self.refresh()
+        self.logmsg(f"Resumed session with {len(titles)} title(s); analyze again to refresh server matches")
+
     def analyze(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         if not self.server_data:
             QMessageBox.warning(
                 self, "Not connected", "Connect and configure a server first."
             )
             return
-        lines = [x.strip() for x in self.input.toPlainText().splitlines() if x.strip()]
+        lines = normalize_titles(self.input.toPlainText().splitlines())
         if not lines:
             return
         self.items = [
@@ -955,6 +1057,9 @@ class Main(QMainWindow):
         )
 
     def refresh(self):
+        self.review_summary_label.setText(review_summary(self.items))
+        previous_row = self.table.currentRow()
+        self.table.blockSignals(True)
         self.table.setRowCount(len(self.items))
         for row, item in enumerate(self.items):
             status = item["status"]
@@ -1016,8 +1121,22 @@ class Main(QMainWindow):
                 }.get(status, "#e9edf6")
                 cell.setForeground(QBrush(QColor(color)))
                 self.table.setItem(row, col, cell)
+        if 0 <= previous_row < len(self.items):
+            self.table.selectRow(previous_row)
+        self.table.blockSignals(False)
         self.table.viewport().update()
         self.show_selected_poster()
+        self.update_review_actions()
+
+    def update_review_actions(self):
+        row = self.table.currentRow()
+        selected = self.items[row] if 0 <= row < len(self.items) else None
+        busy = bool(self.worker and self.worker.isRunning())
+        self.review_btn.setEnabled(bool(selected and selected.get("matches")) and not busy)
+        self.duplicate_btn.setEnabled(bool(selected and selected.get("duplicate")) and not busy)
+        self.add_btn.setEnabled(
+            not busy and any(item.get("status") == "ready" for item in self.items)
+        )
 
     def fetch_poster(self, match, target):
         url = poster_url(match)
@@ -1029,21 +1148,20 @@ class Main(QMainWindow):
         if url in self.poster_cache:
             self.display_poster(target, url, self.poster_cache[url])
             return
+        if url in self.poster_inflight:
+            if target not in self.poster_inflight[url]:
+                self.poster_inflight[url].append(target)
+            return
+        self.poster_inflight[url] = [target]
         worker = PosterWorker(url)
         self.poster_workers.append(worker)
-        worker.loaded.connect(
-            lambda fetched, data, error: self.poster_loaded(
-                fetched, data, error, target
-            )
-        )
-        worker.finished.connect(
-            lambda: (
-                self.poster_workers.remove(worker)
-                if worker in self.poster_workers
-                else None
-            )
-        )
+        worker.loaded.connect(self.poster_loaded)
+        worker.finished.connect(lambda: self.poster_worker_finished(worker))
         worker.start()
+
+    def poster_worker_finished(self, worker):
+        if worker in self.poster_workers:
+            self.poster_workers.remove(worker)
 
     def display_poster(self, target, url, data):
         if target.property("poster_url") != url:
@@ -1061,10 +1179,11 @@ class Main(QMainWindow):
         else:
             target.setText("Poster unavailable")
 
-    def poster_loaded(self, url, data, error, target):
+    def poster_loaded(self, url, data, error):
         if data:
             self.poster_cache[url] = data
-        self.display_poster(target, url, data)
+        for target in self.poster_inflight.pop(url, []):
+            self.display_poster(target, url, data)
         if error:
             self.logmsg(
                 f"Artwork unavailable ({urllib.parse.urlparse(url).hostname}): {error}"
@@ -1075,6 +1194,7 @@ class Main(QMainWindow):
         if row < 0 or row >= len(self.items):
             self.poster.setPixmap(QPixmap())
             self.poster.setText("Select a result")
+            self.preview_info.setText("Choose a row to inspect the match, synopsis, and review status.")
             return
         item = self.items[row]
         index = item.get("selected", -1)
@@ -1095,11 +1215,15 @@ class Main(QMainWindow):
         self.preview_info.setText(
             f"{obj.get('title','Unknown')} ({obj.get('year') or '?'})\n"
             f"{match['type'].upper()} · {match['app'].title()} · Match score: {match['score']:.0%}\n"
+            f"{match_confidence(match, item.get('matches', []))}\n"
             f"{item['message']}\n\n{overview}"
         )
         self.fetch_poster(match, self.poster)
 
     def review(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         row = self.table.currentRow()
         if row < 0 or row >= len(self.items):
             QMessageBox.information(
@@ -1138,7 +1262,7 @@ class Main(QMainWindow):
         synopsis.setAlignment(Qt.AlignmentFlag.AlignTop)
         right.addWidget(synopsis)
         for m in item["matches"]:
-            choices.addItem(f"{m['label']} · score {m['score']:.0%}")
+            choices.addItem(f"{m['label']} · {match_confidence(m, item['matches'])} · score {m['score']:.0%}")
 
         def update_match(idx):
             if idx < 0:
@@ -1158,7 +1282,18 @@ class Main(QMainWindow):
         layout.addWidget(buttons)
         choices.setCurrentRow(max(0, item["selected"]))
         if dialog.exec() == QDialog.DialogCode.Accepted and choices.currentRow() >= 0:
-            item["selected"] = choices.currentRow()
+            previous = item.get("selected", -1)
+            selected = choices.currentRow()
+            if selected != previous:
+                QMessageBox.information(
+                    self,
+                    "Reanalysis required",
+                    "Selecting another metadata ID requires a fresh library check. "
+                    "Update the input title to identify your preferred match and run Analyze again "
+                    "so duplicate detection remains accurate.",
+                )
+                return
+            item["selected"] = selected
             item["status"] = "duplicate" if item.get("duplicate") else "ready"
             item["message"] = (
                 "Already in library — choose Skip / Upgrade / Replace"
@@ -1173,6 +1308,9 @@ class Main(QMainWindow):
             self.show_selected_poster()
 
     def duplicate_action(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         row = self.table.currentRow()
         if row < 0 or row >= len(self.items):
             QMessageBox.information(
@@ -1224,6 +1362,9 @@ class Main(QMainWindow):
         self.table.selectRow(row)
 
     def import_items(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         if not self.settings or not self.server_data:
             QMessageBox.warning(
                 self, "Setup needed", "Save your connection preferences first."
@@ -1274,7 +1415,8 @@ class Main(QMainWindow):
             return
         self.active_dry_run = dry_run
         self.active_import_rows = [
-            i for i, item in enumerate(self.items) if item in pending
+            i for i, item in enumerate(self.items)
+            if item["status"] == "ready" and item["selected"] >= 0
         ]
         self.logmsg(
             f"Import approved for {len(pending)} titles; automatic searches={'on' if self.settings.get('search',True) else 'off'}"
