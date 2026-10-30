@@ -52,4 +52,3 @@ def poster_url(match):
             if url and urllib.parse.urlparse(url).scheme in ("https", "http"):
                 return url
     return None
-

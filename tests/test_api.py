@@ -23,23 +23,31 @@ class ApiTests(unittest.TestCase):
     @patch("bulkrr_api.urllib.request.urlopen")
     def test_successful_get(self, open_url):
         open_url.return_value = FakeResponse()
-        self.assertEqual(get_json("http://localhost:7878", "secret", "system/status"), {"ok": True})
+        self.assertEqual(
+            get_json("http://localhost:7878", "secret", "system/status"), {"ok": True}
+        )
 
     @patch("bulkrr_api.time.sleep")
     @patch("bulkrr_api.urllib.request.urlopen")
     def test_get_retries_temporary_failure(self, open_url, sleep):
         open_url.side_effect = [
-            urllib.error.HTTPError("http://localhost", 503, "Unavailable", {}, io.BytesIO(b"secret")),
+            urllib.error.HTTPError(
+                "http://localhost", 503, "Unavailable", {}, io.BytesIO(b"secret")
+            ),
             FakeResponse(),
         ]
-        self.assertEqual(get_json("http://localhost:7878", "secret", "movie"), {"ok": True})
+        self.assertEqual(
+            get_json("http://localhost:7878", "secret", "movie"), {"ok": True}
+        )
         self.assertEqual(open_url.call_count, 2)
 
     @patch("bulkrr_api.urllib.request.urlopen")
     def test_post_is_never_retried(self, open_url):
         open_url.side_effect = urllib.error.URLError("connection reset")
         with self.assertRaises(RuntimeError):
-            get_json("http://localhost:7878", "secret", "movie", "POST", {"title": "Example"})
+            get_json(
+                "http://localhost:7878", "secret", "movie", "POST", {"title": "Example"}
+            )
         self.assertEqual(open_url.call_count, 1)
 
     @patch("bulkrr_api.urllib.request.urlopen")
