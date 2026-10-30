@@ -351,6 +351,27 @@ class Worker(QThread):
                         (x for x in existing if str(x.get(identifier)) == str(m["id"])),
                         None,
                     )
+                    if self.config.get("dry_run", False):
+                        action = item.get("action", "skip") if found else "add"
+                        if found and action not in ("skip", "upgrade", "replace"):
+                            results.append((item["input"], "red", "Unknown duplicate action"))
+                            continue
+                        if not found:
+                            folder = self.config.get(f"{typ}_folder")
+                            profile = self.config.get(f"{app}_profile")
+                            if not folder or not profile:
+                                results.append((item["input"], "red", "Missing root folder or quality profile"))
+                                continue
+                            description = f"Would add to {app.title()} in {folder} (quality profile {profile})"
+                        elif action == "skip":
+                            description = "Would skip existing library title"
+                        elif not self.config.get("search", True):
+                            description = "Would leave existing title unchanged (search disabled)"
+                        else:
+                            description = "Would request search for existing title (files retained)"
+                        self.progress.emit(f"DRY RUN: {obj['title']}: {description}")
+                        results.append((item["input"], "green", "DRY RUN: " + description))
+                        continue
                     if found:
                         action = item.get("action", "skip")
                         if action == "skip":
@@ -644,6 +665,9 @@ class Main(QMainWindow):
         self.search = QCheckBox("Search for missing content after approving import")
         self.search.setChecked(self.settings.get("search", True))
         self.setup_layout.addWidget(self.search)
+        self.dry_run = QCheckBox("Dry run: preview without changing Radarr/Sonarr")
+        self.dry_run.setChecked(False)
+        self.setup_layout.addWidget(self.dry_run)
         save = QPushButton("Save preferences")
         save.clicked.connect(self.save_preferences)
         self.setup_layout.addWidget(save)
@@ -1235,6 +1259,7 @@ class Main(QMainWindow):
                 self, "Nothing to import", "No confirmed titles ready."
             )
             return
+        dry_run = self.dry_run.isChecked()
         action = (
             "and request searches for missing content"
             if self.settings.get("search", True)
@@ -1243,12 +1268,13 @@ class Main(QMainWindow):
         if (
             QMessageBox.question(
                 self,
-                "Approve import",
-                f"Add {len(pending)} confirmed title(s) {action}?\n\nThis will change your Radarr/Sonarr libraries.",
+                "Approve dry run" if dry_run else "Approve import",
+                (f"Preview {len(pending)} confirmed title(s)?\\n\\nNo Radarr/Sonarr changes will be made." if dry_run else f"Add {len(pending)} confirmed title(s) {action}?\\n\\nThis will change your Radarr/Sonarr libraries."),
             )
             != QMessageBox.StandardButton.Yes
         ):
             return
+        self.active_dry_run = dry_run
         self.active_import_rows = [
             i for i, item in enumerate(self.items) if item in pending
         ]
@@ -1260,7 +1286,7 @@ class Main(QMainWindow):
             item["message"] = "Queued for import"
         self.refresh()
         self.run_worker(
-            "import", items=pending, config=self.settings, done=self.imported
+            "import", items=pending, config={**self.settings, "dry_run": dry_run}, done=self.imported
         )
 
     def imported(self, results):
@@ -1272,7 +1298,7 @@ class Main(QMainWindow):
                     "done",
                     "failed",
                 ):
-                    item["status"] = "done" if status == "green" else "failed"
+                    item["status"] = ("ready" if status == "green" else "failed") if getattr(self, "active_dry_run", False) else ("done" if status == "green" else "failed")
                     item["message"] = message
                     break
         self.refresh()
