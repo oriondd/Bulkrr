@@ -58,6 +58,7 @@ from bulkrr_api import get_json
 from bulkrr_core import title_parts, similarity, candidate_score, classify, poster_url
 from bulkrr_imports import normalize_titles, read_source, save_session, load_session
 from bulkrr_review import review_summary, STATUS_LABELS, match_confidence
+from bulkrr_theme import DARK_THEME
 
 
 class PosterWorker(QThread):
@@ -616,7 +617,7 @@ class Main(QMainWindow):
         super().__init__()
         self.setWindowTitle("Bulkrr — Phase 2 development")
         self.setWindowIcon(QIcon(str(ASSET_DIR / "Bulkrr.ico")))
-        self.resize(1000, 740)
+        self.resize(1120, 800)
         self.connections = {}
         self.server_data = {}
         self.items = []
@@ -774,7 +775,7 @@ class Main(QMainWindow):
         row.addWidget(self.review_btn)
         row.addWidget(self.add_btn)
         v.addLayout(row)
-        tabs.addTab(importer, "2. Bulk import")
+        tabs.addTab(importer, "2. Import & review")
         self.log = QTextEdit()
         self.log.setReadOnly(True)
         self.log.setPlaceholderText(
@@ -783,19 +784,7 @@ class Main(QMainWindow):
         tabs.addTab(self.log, "Activity log")
         self.tabs = tabs
         self.statusBar().showMessage("Connect to Radarr/Sonarr to begin")
-        self.setStyleSheet(
-            """
-          QMainWindow,QWidget {background:#151923;color:#e9edf6;font-size:13px}
-          QLineEdit,QTextEdit,QComboBox,QTableWidget {background:#222a37;color:#f3f6fc;border:1px solid #39465a;border-radius:5px;padding:5px}
-          QPushButton {background:#2874bd;color:white;border:0;border-radius:6px;padding:9px;font-weight:600}
-          QPushButton:hover {background:#358ad9}
-          QPushButton:disabled {background:#45505f;color:#aab2c1}
-          QGroupBox {border:1px solid #39465a;border-radius:8px;margin-top:12px;padding:10px}
-          QTabBar::tab {background:#242b38;padding:11px}
-          QTabBar::tab:selected {background:#2874bd}
-          QLabel#reviewSummary {background:#202a3c;border:1px solid #39465a;border-radius:8px;padding:12px;color:#cbdaf6;font-weight:600}
-        """
-        )
+        self.setStyleSheet(DARK_THEME)
 
     def load_settings(self):
         try:
