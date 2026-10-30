@@ -7,6 +7,7 @@ on:
       - refactor/readable-source
       - feature/phase2-import-experience
       - feature/phase3-library-management
+      - feature/v2-unified-roadmap
   pull_request:
     branches:
       - main
