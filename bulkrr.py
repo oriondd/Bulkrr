@@ -1132,7 +1132,8 @@ class Main(QMainWindow):
             self.display_poster(target, url, self.poster_cache[url])
             return
         if url in self.poster_inflight:
-            self.poster_inflight[url].append(target)
+            if target not in self.poster_inflight[url]:
+                self.poster_inflight[url].append(target)
             return
         self.poster_inflight[url] = [target]
         worker = PosterWorker(url)
