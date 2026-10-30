@@ -968,6 +968,9 @@ class Main(QMainWindow):
             self.import_files(paths)
 
     def import_files(self, paths):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         try:
             titles = normalize_titles(
                 self.input.toPlainText().splitlines()
@@ -993,6 +996,9 @@ class Main(QMainWindow):
         self.logmsg(f"Saved session with {count} title(s)")
 
     def resume_import_session(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         path, _ = QFileDialog.getOpenFileName(
             self, "Resume import session", "", "Bulkrr session (*.json)"
         )
@@ -1009,6 +1015,9 @@ class Main(QMainWindow):
         self.logmsg(f"Resumed session with {len(titles)} title(s); analyze again to refresh server matches")
 
     def analyze(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         if not self.server_data:
             QMessageBox.warning(
                 self, "Not connected", "Connect and configure a server first."
@@ -1188,6 +1197,9 @@ class Main(QMainWindow):
         self.fetch_poster(match, self.poster)
 
     def review(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         row = self.table.currentRow()
         if row < 0 or row >= len(self.items):
             QMessageBox.information(
@@ -1271,6 +1283,9 @@ class Main(QMainWindow):
             self.show_selected_poster()
 
     def duplicate_action(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         row = self.table.currentRow()
         if row < 0 or row >= len(self.items):
             QMessageBox.information(
@@ -1322,6 +1337,9 @@ class Main(QMainWindow):
         self.table.selectRow(row)
 
     def import_items(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the current operation to finish.")
+            return
         if not self.settings or not self.server_data:
             QMessageBox.warning(
                 self, "Setup needed", "Save your connection preferences first."
