@@ -1264,9 +1264,9 @@ class Main(QMainWindow):
                 self,
                 "Approve dry run" if dry_run else "Approve import",
                 (
-                    f"Preview {len(pending)} confirmed title(s)?\\n\\nNo Radarr/Sonarr changes will be made."
+                    f"Preview {len(pending)} confirmed title(s)?\n\nNo Radarr/Sonarr changes will be made."
                     if dry_run
-                    else f"Add {len(pending)} confirmed title(s) {action}?\\n\\nThis will change your Radarr/Sonarr libraries."
+                    else f"Add {len(pending)} confirmed title(s) {action}?\n\nThis will change your Radarr/Sonarr libraries."
                 ),
             )
             != QMessageBox.StandardButton.Yes
@@ -1308,7 +1308,9 @@ class Main(QMainWindow):
                     break
         self.refresh()
         self.logmsg(
-            f"Import finished: {sum(x[1]=='green' for x in results)} successful, {sum(x[1]=='red' for x in results)} failed."
+            f"{'Dry run finished' if getattr(self, 'active_dry_run', False) else 'Import finished'}: "
+            f"{sum(x[1]=='green' for x in results)} {'simulated' if getattr(self, 'active_dry_run', False) else 'successful'}, "
+            f"{sum(x[1]=='red' for x in results)} failed."
         )
 
 
