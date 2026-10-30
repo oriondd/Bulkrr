@@ -1051,6 +1051,8 @@ class Main(QMainWindow):
 
     def refresh(self):
         self.review_summary_label.setText(review_summary(self.items))
+        previous_row = self.table.currentRow()
+        self.table.blockSignals(True)
         self.table.setRowCount(len(self.items))
         for row, item in enumerate(self.items):
             status = item["status"]
@@ -1112,6 +1114,9 @@ class Main(QMainWindow):
                 }.get(status, "#e9edf6")
                 cell.setForeground(QBrush(QColor(color)))
                 self.table.setItem(row, col, cell)
+        if 0 <= previous_row < len(self.items):
+            self.table.selectRow(previous_row)
+        self.table.blockSignals(False)
         self.table.viewport().update()
         self.show_selected_poster()
 
@@ -1171,6 +1176,7 @@ class Main(QMainWindow):
         if row < 0 or row >= len(self.items):
             self.poster.setPixmap(QPixmap())
             self.poster.setText("Select a result")
+            self.preview_info.setText("Choose a row to inspect the match, synopsis, and review status.")
             return
         item = self.items[row]
         index = item.get("selected", -1)
