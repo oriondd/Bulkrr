@@ -57,7 +57,7 @@ from bulkrr_api import get_json
 # Re-export these helpers for compatibility with existing integrations.
 from bulkrr_core import title_parts, similarity, candidate_score, classify, poster_url
 from bulkrr_imports import normalize_titles, read_source, save_session, load_session
-from bulkrr_review import review_summary, STATUS_LABELS
+from bulkrr_review import review_summary, STATUS_LABELS, match_confidence
 
 
 class PosterWorker(QThread):
@@ -1186,6 +1186,7 @@ class Main(QMainWindow):
         self.preview_info.setText(
             f"{obj.get('title','Unknown')} ({obj.get('year') or '?'})\n"
             f"{match['type'].upper()} · {match['app'].title()} · Match score: {match['score']:.0%}\n"
+            f"{match_confidence(match, item.get('matches', []))}\n"
             f"{item['message']}\n\n{overview}"
         )
         self.fetch_poster(match, self.poster)
@@ -1229,7 +1230,7 @@ class Main(QMainWindow):
         synopsis.setAlignment(Qt.AlignmentFlag.AlignTop)
         right.addWidget(synopsis)
         for m in item["matches"]:
-            choices.addItem(f"{m['label']} · score {m['score']:.0%}")
+            choices.addItem(f"{m['label']} · {match_confidence(m, item['matches'])} · score {m['score']:.0%}")
 
         def update_match(idx):
             if idx < 0:
