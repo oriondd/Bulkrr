@@ -755,6 +755,7 @@ class Main(QMainWindow):
         self.table.setColumnWidth(0, 55)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.itemSelectionChanged.connect(self.show_selected_poster)
+        self.table.itemSelectionChanged.connect(self.update_review_actions)
         v.addWidget(self.table)
         preview = QGroupBox("Selected title — artwork and metadata")
         preview_layout = QHBoxLayout(preview)
@@ -793,6 +794,7 @@ class Main(QMainWindow):
         self.tabs = tabs
         self.statusBar().showMessage("Connect to Radarr/Sonarr to begin")
         self.setStyleSheet(DARK_THEME)
+        self.update_review_actions()
 
     def load_settings(self):
         try:
@@ -1122,6 +1124,17 @@ class Main(QMainWindow):
         self.table.blockSignals(False)
         self.table.viewport().update()
         self.show_selected_poster()
+        self.update_review_actions()
+
+    def update_review_actions(self):
+        row = self.table.currentRow()
+        selected = self.items[row] if 0 <= row < len(self.items) else None
+        busy = bool(self.worker and self.worker.isRunning())
+        self.review_btn.setEnabled(bool(selected and selected.get("matches")) and not busy)
+        self.duplicate_btn.setEnabled(bool(selected and selected.get("duplicate")) and not busy)
+        self.add_btn.setEnabled(
+            not busy and any(item.get("status") == "ready" for item in self.items)
+        )
 
     def fetch_poster(self, match, target):
         url = poster_url(match)
