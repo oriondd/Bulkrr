@@ -326,7 +326,7 @@ class Worker(QThread):
                         f"[{i}/{len(self.items)}] Checking {obj['title']} in {app.title()} (metadata ID {m['id']}, type {typ})..."
                     )
                     self.row_progress.emit(
-                        self.items.index(item),
+                        i - 1,
                         "working",
                         "Checking for existing library entry...",
                     )
@@ -473,7 +473,7 @@ class Worker(QThread):
                         f"  Adding {obj['title']} to {folder}; quality profile ID={profile}; search after approval={self.config.get('search',True)}"
                     )
                     self.row_progress.emit(
-                        self.items.index(item),
+                        i - 1,
                         "working",
                         "Submitting to " + app.title() + "...",
                     )
@@ -494,13 +494,13 @@ class Worker(QThread):
                             f"  Added successfully: {obj['title']}; search request={'enabled' if self.config.get('search',True) else 'disabled'}"
                         )
                         self.row_progress.emit(
-                            self.items.index(item), "done", "Added successfully"
+                            i - 1, "done", "Added successfully"
                         )
                     except Exception as e:
                         results.append((item["input"], "red", str(e)[:300]))
                         self.progress.emit(f"  Failed: {obj['title']} — {e}")
                         self.row_progress.emit(
-                            self.items.index(item), "failed", str(e)[:180]
+                            i - 1, "failed", str(e)[:180]
                         )
                 self.finished_data.emit(results)
         except Exception as e:
@@ -1390,7 +1390,8 @@ class Main(QMainWindow):
             return
         self.active_dry_run = dry_run
         self.active_import_rows = [
-            i for i, item in enumerate(self.items) if item in pending
+            i for i, item in enumerate(self.items)
+            if item["status"] == "ready" and item["selected"] >= 0
         ]
         self.logmsg(
             f"Import approved for {len(pending)} titles; automatic searches={'on' if self.settings.get('search',True) else 'off'}"
