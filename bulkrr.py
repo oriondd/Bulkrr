@@ -331,7 +331,12 @@ class Worker(QThread):
                         "Checking for existing library entry...",
                     )
                     endpoint = "movie" if app == "radarr" else "series"
-                    existing = self.call(app, endpoint)
+                    try:
+                        existing = self.call(app, endpoint)
+                    except Exception as exc:
+                        results.append((item["input"], "red", f"Library check failed: {exc}"))
+                        self.progress.emit(f"  Could not verify {obj['title']} in {app.title()}: {exc}")
+                        continue
                     identifier = "tmdbId" if app == "radarr" else "tvdbId"
                     found = next(
                         (x for x in existing if str(x.get(identifier)) == str(m["id"])),
@@ -615,7 +620,7 @@ class TitleInput(QTextEdit):
 class Main(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Bulkrr — Phase 2 development")
+        self.setWindowTitle("Bulkrr — Phase 2 preview")
         self.setWindowIcon(QIcon(str(ASSET_DIR / "Bulkrr.ico")))
         self.resize(1120, 800)
         self.connections = {}
