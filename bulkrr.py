@@ -715,8 +715,8 @@ class Main(QMainWindow):
         source_row = QHBoxLayout()
         for label, handler in (
             ("Import TXT / CSV", self.choose_import_files),
-            ("Save session", self.save_import_session),
-            ("Resume session", self.resume_import_session),
+            ("Save title list", self.save_import_session),
+            ("Load title list", self.resume_import_session),
         ):
             button = QPushButton(label)
             button.clicked.connect(handler)
@@ -1246,7 +1246,17 @@ class Main(QMainWindow):
         layout.addWidget(buttons)
         choices.setCurrentRow(max(0, item["selected"]))
         if dialog.exec() == QDialog.DialogCode.Accepted and choices.currentRow() >= 0:
-            item["selected"] = choices.currentRow()
+            previous = item.get("selected", -1)
+            selected = choices.currentRow()
+            if item.get("duplicate") and selected != previous:
+                QMessageBox.information(
+                    self,
+                    "Reanalysis required",
+                    "This title was found in your library. To select a different metadata match, "
+                    "update its input title and run Analyze again so duplicate detection stays accurate.",
+                )
+                return
+            item["selected"] = selected
             item["status"] = "duplicate" if item.get("duplicate") else "ready"
             item["message"] = (
                 "Already in library — choose Skip / Upgrade / Replace"
