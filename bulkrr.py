@@ -726,6 +726,7 @@ class Main(QMainWindow):
         self.analyze_btn.clicked.connect(self.analyze)
         v.addWidget(self.analyze_btn)
         self.review_summary_label = QLabel(review_summary([]))
+        self.review_summary_label.setWordWrap(True)
         self.review_summary_label.setObjectName("reviewSummary")
         v.addWidget(self.review_summary_label)
         self.table = QTableWidget(0, 7)
@@ -743,6 +744,7 @@ class Main(QMainWindow):
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(False)
         self.table.setMinimumHeight(270)
+        self.table.setToolTip("Select a row to inspect its poster and metadata; use Confirm to choose an alternate match.")
         self.table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
