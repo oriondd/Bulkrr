@@ -629,6 +629,7 @@ class Main(QMainWindow):
         self.worker = None
         self.poster_cache = {}
         self.poster_workers = []
+        self.poster_requests = set()
         self.poster_target = None
         self.settings = self.load_settings()
         tabs = QTabWidget()
@@ -1130,6 +1131,9 @@ class Main(QMainWindow):
         if url in self.poster_cache:
             self.display_poster(target, url, self.poster_cache[url])
             return
+        if url in self.poster_requests:
+            return
+        self.poster_requests.add(url)
         worker = PosterWorker(url)
         self.poster_workers.append(worker)
         worker.loaded.connect(
@@ -1137,14 +1141,13 @@ class Main(QMainWindow):
                 fetched, data, error, target
             )
         )
-        worker.finished.connect(
-            lambda: (
-                self.poster_workers.remove(worker)
-                if worker in self.poster_workers
-                else None
-            )
-        )
+        worker.finished.connect(lambda: self.poster_worker_finished(worker, url))
         worker.start()
+
+    def poster_worker_finished(self, worker, url):
+        self.poster_requests.discard(url)
+        if worker in self.poster_workers:
+            self.poster_workers.remove(worker)
 
     def display_poster(self, target, url, data):
         if target.property("poster_url") != url:
