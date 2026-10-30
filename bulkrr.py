@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QListWidget,
     QSplitter,
     QSplashScreen,
+    QFileDialog,
 )
 
 ASSET_DIR = Path(__file__).resolve().parent
@@ -55,6 +56,7 @@ from bulkrr_api import get_json
 
 # Re-export these helpers for compatibility with existing integrations.
 from bulkrr_core import title_parts, similarity, candidate_score, classify, poster_url
+from bulkrr_imports import normalize_titles, read_source, save_session, load_session
 
 
 class PosterWorker(QThread):
@@ -587,10 +589,31 @@ class StatusLED(QWidget):
         painter.end()
 
 
+class TitleInput(QTextEdit):
+    """Text input accepting TXT and CSV drops; delegates file handling to Main."""
+
+    files_dropped = Signal(list)
+
+    def dragEnterEvent(self, event):
+        urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
+        if urls and all(url.isLocalFile() and Path(url.toLocalFile()).suffix.lower() in (".txt", ".csv") for url in urls):
+            event.acceptProposedAction()
+        else:
+            super().dragEnterEvent(event)
+
+    def dropEvent(self, event):
+        urls = event.mimeData().urls() if event.mimeData().hasUrls() else []
+        if urls and all(url.isLocalFile() and Path(url.toLocalFile()).suffix.lower() in (".txt", ".csv") for url in urls):
+            self.files_dropped.emit([url.toLocalFile() for url in urls])
+            event.acceptProposedAction()
+        else:
+            super().dropEvent(event)
+
+
 class Main(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Bulkrr v1.5")
+        self.setWindowTitle("Bulkrr — Phase 2 development")
         self.setWindowIcon(QIcon(str(ASSET_DIR / "Bulkrr.ico")))
         self.resize(1000, 740)
         self.connections = {}
@@ -674,11 +697,22 @@ class Main(QMainWindow):
                 "Paste one title per line. Optional prefixes: movie:, tv:, anime:. Year optional: (2012)."
             )
         )
-        self.input = QTextEdit()
+        self.input = TitleInput()
+        self.input.files_dropped.connect(self.import_files)
         self.input.setPlaceholderText(
             "movie: The Raid (2011)\ntv: Breaking Bad (2008)\nanime: Death Note (2006)"
         )
         v.addWidget(self.input)
+        source_row = QHBoxLayout()
+        for label, handler in (
+            ("Import TXT / CSV", self.choose_import_files),
+            ("Save session", self.save_import_session),
+            ("Resume session", self.resume_import_session),
+        ):
+            button = QPushButton(label)
+            button.clicked.connect(handler)
+            source_row.addWidget(button)
+        v.addLayout(source_row)
         self.analyze_btn = QPushButton("Analyze titles (no changes)")
         self.analyze_btn.clicked.connect(self.analyze)
         v.addWidget(self.analyze_btn)
@@ -922,13 +956,61 @@ class Main(QMainWindow):
         )
         self.tabs.setCurrentIndex(1)
 
+    def choose_import_files(self):
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Import title lists", "", "Title lists (*.txt *.csv)"
+        )
+        if paths:
+            self.import_files(paths)
+
+    def import_files(self, paths):
+        try:
+            titles = normalize_titles(
+                self.input.toPlainText().splitlines()
+                + [title for path in paths for title in read_source(path)]
+            )
+        except (OSError, UnicodeError, ValueError) as error:
+            QMessageBox.warning(self, "File import failed", str(error))
+            return
+        self.input.setPlainText("\\n".join(titles))
+        self.logmsg(f"Loaded {len(paths)} file(s); {len(titles)} unique titles ready for analysis")
+
+    def save_import_session(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save import session", "bulkrr-session.json", "Bulkrr session (*.json)"
+        )
+        if not path:
+            return
+        try:
+            count = save_session(path, self.input.toPlainText())
+        except OSError as error:
+            QMessageBox.warning(self, "Session save failed", str(error))
+            return
+        self.logmsg(f"Saved session with {count} title(s)")
+
+    def resume_import_session(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Resume import session", "", "Bulkrr session (*.json)"
+        )
+        if not path:
+            return
+        try:
+            titles = load_session(path)
+        except (OSError, ValueError, UnicodeError) as error:
+            QMessageBox.warning(self, "Session load failed", str(error))
+            return
+        self.input.setPlainText("\\n".join(titles))
+        self.items = []
+        self.refresh()
+        self.logmsg(f"Resumed session with {len(titles)} title(s); analyze again to refresh server matches")
+
     def analyze(self):
         if not self.server_data:
             QMessageBox.warning(
                 self, "Not connected", "Connect and configure a server first."
             )
             return
-        lines = [x.strip() for x in self.input.toPlainText().splitlines() if x.strip()]
+        lines = normalize_titles(self.input.toPlainText().splitlines())
         if not lines:
             return
         self.items = [
