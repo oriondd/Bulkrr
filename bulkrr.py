@@ -841,7 +841,9 @@ class Main(QMainWindow):
             )
         )
         self.worker.finished_data.connect(done)
+        self.worker.finished.connect(self.update_review_actions)
         self.worker.start()
+        self.update_review_actions()
 
     def connection_error(self):
         for app in self.connections:
