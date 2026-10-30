@@ -59,6 +59,7 @@ from bulkrr_core import title_parts, similarity, candidate_score, classify, post
 from bulkrr_imports import normalize_titles, read_source, save_session, load_session
 from bulkrr_review import review_summary, STATUS_LABELS, match_confidence
 from bulkrr_theme import DARK_THEME
+from bulkrr_library import missing_movies, missing_series
 
 
 class PosterWorker(QThread):
@@ -133,6 +134,16 @@ class Worker(QThread):
                     self.progress.emit(
                         f"{app.title()} connected (v{info.get('version','?')})."
                     )
+                self.finished_data.emit(result)
+            elif self.task == "library_scan":
+                result = {"movies": [], "series": [], "errors": []}
+                for app, endpoint, target, parser in (("radarr", "movie", "movies", missing_movies), ("sonarr", "series", "series", missing_series)):
+                    if app not in self.connections:
+                        continue
+                    try:
+                        result[target] = parser(self.call(app, endpoint))
+                    except Exception as exc:
+                        result["errors"].append(f"{app.title()}: {exc}")
                 self.finished_data.emit(result)
             elif self.task == "analyze":
                 out = []
@@ -620,7 +631,7 @@ class TitleInput(QTextEdit):
 class Main(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Bulkrr — Phase 2 preview")
+        self.setWindowTitle("Bulkrr — 2.0 development preview")
         self.setWindowIcon(QIcon(str(ASSET_DIR / "Bulkrr.ico")))
         self.resize(1120, 800)
         self.connections = {}
@@ -785,6 +796,19 @@ class Main(QMainWindow):
         row.addWidget(self.add_btn)
         v.addLayout(row)
         tabs.addTab(importer, "2. Import & review")
+        library_page = QWidget()
+        library_layout = QVBoxLayout(library_page)
+        library_layout.addWidget(QLabel("Read-only inventory of missing movies and TV episodes. No searches or changes are made."))
+        self.library_scan_btn = QPushButton("Scan connected libraries")
+        self.library_scan_btn.clicked.connect(self.scan_library)
+        library_layout.addWidget(self.library_scan_btn)
+        self.library_summary = QLabel("Connect to Radarr/Sonarr, then scan.")
+        self.library_layout_table = QTableWidget(0, 5)
+        self.library_layout_table.setHorizontalHeaderLabels(["Server", "Title", "Year", "Missing", "Monitored"])
+        self.library_layout_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        library_layout.addWidget(self.library_summary)
+        library_layout.addWidget(self.library_layout_table)
+        tabs.addTab(library_page, "3. Library inventory")
         self.log = QTextEdit()
         self.log.setReadOnly(True)
         self.log.setPlaceholderText(
@@ -795,6 +819,32 @@ class Main(QMainWindow):
         self.statusBar().showMessage("Connect to Radarr/Sonarr to begin")
         self.setStyleSheet(DARK_THEME)
         self.update_review_actions()
+
+    def scan_library(self):
+        if self.worker and self.worker.isRunning():
+            return
+        if not self.server_data:
+            QMessageBox.information(self, "Connect first", "Connect to Sonarr or Radarr before scanning.")
+            return
+        self.library_summary.setText("Scanning connected libraries...")
+        self.library_scan_btn.setEnabled(False)
+        self.run_worker("library_scan", done=self.library_scanned)
+
+    def library_scanned(self, data):
+        self.library_scan_btn.setEnabled(True)
+        rows = [("Radarr", m, "1") for m in data["movies"]]
+        rows += [("Sonarr", s, str(s["missing"])) for s in data["series"]]
+        self.library_layout_table.setRowCount(len(rows))
+        for row, (app, entry, count) in enumerate(rows):
+            for col, value in enumerate((app, entry["title"], entry.get("year") or "—", count, "Yes" if entry["monitored"] else "No")):
+                cell = QTableWidgetItem(str(value))
+                cell.setFlags(cell.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                self.library_layout_table.setItem(row, col, cell)
+        summary = f"{len(data['movies'])} missing movies; {sum(s['missing'] for s in data['series'])} missing episodes across {len(data['series'])} shows"
+        if data["errors"]:
+            summary += " | Errors: " + "; ".join(data["errors"])
+        self.library_summary.setText(summary)
+        self.logmsg("Library inventory: " + summary)
 
     def load_settings(self):
         try:
