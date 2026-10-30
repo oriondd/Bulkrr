@@ -19,6 +19,14 @@ A Windows desktop companion for organizing large media wish lists, reviewing tit
 
 Bulkrr helps you paste a list of titles, look up matching metadata through your own Radarr and Sonarr instances, and review the results before adding them. It is designed for people who manage large movie, television, and anime libraries and want more visibility than a one-title-at-a-time workflow.
 
+## Project origins and community goal
+
+**Transparency:** Bulkrr was initially created with the help of Claude AI. It began as a practical way to solve a problem with bulk-adding titles to Radarr and Sonarr, rather than as a polished, production-ready software project.
+
+The goal is to share a **working, barebones foundation** that anyone can use, inspect, improve, and build upon. The current beta is a starting point, not a finished product. Code cleanup, bug fixes, testing, documentation, accessibility improvements, and new features are all welcome.
+
+You don't need to be an expert to contribute. If you spot something that could be clearer, safer, or easier to use, please [open an issue](https://github.com/oriondd/Bulkrr/issues) or read the [contribution guidelines](CONTRIBUTING.md) to submit a pull request. Bulkrr is available under the [MIT License](LICENSE).
+
 ## Features
 
 - **Bulk title analysis:** Paste multiple titles in one batch, including `movie:`, `tv:`, and `anime:` prefixes.
