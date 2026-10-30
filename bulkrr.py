@@ -981,6 +981,8 @@ class Main(QMainWindow):
             QMessageBox.warning(self, "File import failed", str(error))
             return
         self.input.setPlainText("\n".join(titles))
+        self.items = []
+        self.refresh()
         self.logmsg(f"Loaded {len(paths)} file(s); {len(titles)} unique titles ready for analysis")
 
     def save_import_session(self):
