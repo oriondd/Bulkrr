@@ -57,6 +57,7 @@ from bulkrr_api import get_json
 # Re-export these helpers for compatibility with existing integrations.
 from bulkrr_core import title_parts, similarity, candidate_score, classify, poster_url
 from bulkrr_imports import normalize_titles, read_source, save_session, load_session
+from bulkrr_review import review_summary, STATUS_LABELS
 
 
 class PosterWorker(QThread):
@@ -699,9 +700,11 @@ class Main(QMainWindow):
         )
         self.input = TitleInput()
         self.input.files_dropped.connect(self.import_files)
+        self.input.setAcceptDrops(True)
         self.input.setPlaceholderText(
             "movie: The Raid (2011)\ntv: Breaking Bad (2008)\nanime: Death Note (2006)"
         )
+        v.addWidget(QLabel("Drop .txt or .csv files here, or paste titles below."))
         v.addWidget(self.input)
         source_row = QHBoxLayout()
         for label, handler in (
@@ -716,6 +719,9 @@ class Main(QMainWindow):
         self.analyze_btn = QPushButton("Analyze titles (no changes)")
         self.analyze_btn.clicked.connect(self.analyze)
         v.addWidget(self.analyze_btn)
+        self.review_summary_label = QLabel(review_summary([]))
+        self.review_summary_label.setObjectName("reviewSummary")
+        v.addWidget(self.review_summary_label)
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(
             [
@@ -729,6 +735,7 @@ class Main(QMainWindow):
             ]
         )
         self.table.setAlternatingRowColors(True)
+        self.table.setSortingEnabled(False)
         self.table.setMinimumHeight(270)
         self.table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
@@ -786,6 +793,7 @@ class Main(QMainWindow):
           QGroupBox {border:1px solid #39465a;border-radius:8px;margin-top:12px;padding:10px}
           QTabBar::tab {background:#242b38;padding:11px}
           QTabBar::tab:selected {background:#2874bd}
+          QLabel#reviewSummary {background:#202a3c;border:1px solid #39465a;border-radius:8px;padding:12px;color:#cbdaf6;font-weight:600}
         """
         )
 
@@ -1037,6 +1045,7 @@ class Main(QMainWindow):
         )
 
     def refresh(self):
+        self.review_summary_label.setText(review_summary(self.items))
         self.table.setRowCount(len(self.items))
         for row, item in enumerate(self.items):
             status = item["status"]
