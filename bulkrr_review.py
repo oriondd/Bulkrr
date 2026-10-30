@@ -38,3 +38,21 @@ def review_summary(items):
         f'{c["review"]} need review  |  {c["duplicate"]} duplicates  |  '
         f'{c["done"]} added  |  {c["failed"]} issues  |  {c["skipped"]} skipped'
     )
+
+
+def match_confidence(match, alternatives=()):
+    """Display confidence, not a calibrated probability."""
+    if not match:
+        return "No match"
+    score = float(match.get("score", 0))
+    close = any(
+        other is not match and float(other.get("score", 0)) >= score - 0.09
+        for other in alternatives
+    )
+    if close:
+        return "Ambiguous — review alternatives"
+    if score >= 0.96:
+        return "Strong match"
+    if score >= 0.80:
+        return "Possible match — verify"
+    return "Low confidence — verify"
