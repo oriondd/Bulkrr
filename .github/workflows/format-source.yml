@@ -1,0 +1,44 @@
+name: Format Bulkrr source
+
+on:
+  push:
+    branches:
+      - refactor/readable-source
+    paths:
+      - .github/workflows/format-source.yml
+      - '*.py'
+      - 'tests/*.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          ref: refactor/readable-source
+
+      - name: Install formatter
+        run: |
+          python3 -m venv /tmp/bulkrr-format-venv
+          /tmp/bulkrr-format-venv/bin/python -m pip install black==24.10.0
+
+      - name: Format Python source
+        run: /tmp/bulkrr-format-venv/bin/python -m black --line-length 88 bulkrr.py bulkrr_core.py bulkrr_api.py tests/
+
+      - name: Check Python syntax
+        run: python3 -m compileall -q bulkrr.py bulkrr_core.py bulkrr_api.py tests
+
+      - name: Commit formatted code
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bulkrr.py bulkrr_core.py bulkrr_api.py tests/
+          if ! git diff --cached --quiet; then
+            git commit -m "Format Bulkrr source with Black"
+            git push
+          fi
