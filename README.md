@@ -112,7 +112,7 @@ Please remove API keys, credentials, and identifying server information before p
 
 ## License
 
-No open-source license has been selected yet. **Publicly available source code is not automatically open-source licensed.** If you plan to accept contributions or allow redistribution, choose and add an appropriate `LICENSE` file.
+Bulkrr is open source under the [MIT License](LICENSE). Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
 
