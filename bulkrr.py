@@ -49,26 +49,8 @@ logging.basicConfig(
 )
 
 
-def get_json(base, key, path, method="GET", payload=None):
-    url = base.rstrip("/") + "/api/v3/" + path.lstrip("/")
-    data = json.dumps(payload).encode() if payload is not None else None
-    req = urllib.request.Request(
-        url,
-        data=data,
-        method=method,
-        headers={
-            "X-Api-Key": key,
-            "Content-Type": "application/json",
-            "User-Agent": "Bulkrr/1.5",
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            body = resp.read()
-            return json.loads(body) if body else {}
-    except urllib.error.HTTPError as e:
-        detail = e.read(700).decode("utf-8", "replace")
-        raise RuntimeError(f"HTTP {e.code}: {detail}") from e
+# Preserve the public helper name for compatibility.
+from bulkrr_api import get_json
 
 
 # Re-export these helpers for compatibility with existing integrations.
