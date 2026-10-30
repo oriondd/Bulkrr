@@ -629,6 +629,7 @@ class Main(QMainWindow):
         self.worker = None
         self.poster_cache = {}
         self.poster_workers = []
+        self.poster_inflight = {}
         self.poster_target = None
         self.settings = self.load_settings()
         tabs = QTabWidget()
@@ -1130,21 +1131,19 @@ class Main(QMainWindow):
         if url in self.poster_cache:
             self.display_poster(target, url, self.poster_cache[url])
             return
+        if url in self.poster_inflight:
+            self.poster_inflight[url].append(target)
+            return
+        self.poster_inflight[url] = [target]
         worker = PosterWorker(url)
         self.poster_workers.append(worker)
-        worker.loaded.connect(
-            lambda fetched, data, error: self.poster_loaded(
-                fetched, data, error, target
-            )
-        )
-        worker.finished.connect(
-            lambda: (
-                self.poster_workers.remove(worker)
-                if worker in self.poster_workers
-                else None
-            )
-        )
+        worker.loaded.connect(self.poster_loaded)
+        worker.finished.connect(lambda: self.poster_worker_finished(worker))
         worker.start()
+
+    def poster_worker_finished(self, worker):
+        if worker in self.poster_workers:
+            self.poster_workers.remove(worker)
 
     def display_poster(self, target, url, data):
         if target.property("poster_url") != url:
@@ -1162,10 +1161,11 @@ class Main(QMainWindow):
         else:
             target.setText("Poster unavailable")
 
-    def poster_loaded(self, url, data, error, target):
+    def poster_loaded(self, url, data, error):
         if data:
             self.poster_cache[url] = data
-        self.display_poster(target, url, data)
+        for target in self.poster_inflight.pop(url, []):
+            self.display_poster(target, url, data)
         if error:
             self.logmsg(
                 f"Artwork unavailable ({urllib.parse.urlparse(url).hostname}): {error}"
