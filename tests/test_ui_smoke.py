@@ -292,6 +292,48 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_multi_destination_gui_prepares_separate_batches_without_api_calls(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value="secret"):
+                    window = bulkrr.Main()
+                    try:
+                        window.extra_profiles = [
+                            {"id": "shows", "kind": "sonarr", "url": "http://shows:8989",
+                             "label": "Shows"},
+                            {"id": "films", "kind": "radarr", "url": "http://films:7878",
+                             "label": "Films"}]
+                        window.refresh_extra_list()
+                        window.items = [
+                            {"input": "Show", "matches": [{"app": "sonarr", "type": "tv",
+                              "id": 11, "data": {"title": "Show"}}], "selected": 0,
+                             "status": "ready"},
+                            {"input": "Film", "matches": [{"app": "radarr", "type": "movie",
+                              "id": 22, "data": {"title": "Film"}}], "selected": 0,
+                             "status": "ready"}]
+                        window.refresh()
+                        window.table.selectRow(0)
+                        window.table.selectRow(1)
+                        with patch.object(bulkrr.QInputDialog, "getItem",
+                                          side_effect=[("Shows (shows)", True),
+                                                       ("Films (films)", True)]):
+                            with patch.object(bulkrr.QInputDialog, "getInt",
+                                              side_effect=[(3, True), (7, True)]):
+                                with patch.object(bulkrr.QInputDialog, "getText",
+                                                  side_effect=[("/tv", True),
+                                                               ("/anime", True),
+                                                               ("/movies", True)]):
+                                    with patch.object(window, "run_worker") as worker:
+                                        window.prepare_extra_import()
+                        worker.assert_called_once()
+                        self.assertEqual(worker.call_args.args[0], "routed_import_preview")
+                        batches = worker.call_args.kwargs["config"]["batches"]
+                        self.assertEqual(len(batches), 2)
+                        self.assertEqual(batches[0]["items"][0]["payload"]["rootFolderPath"], "/tv")
+                        self.assertEqual(batches[1]["items"][0]["payload"]["rootFolderPath"], "/movies")
+                    finally:
+                        window.close()
+
 
 if __name__ == "__main__":
     unittest.main()
