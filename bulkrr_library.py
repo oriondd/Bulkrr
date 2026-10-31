@@ -36,9 +36,9 @@ def missing_series(series):
             continue
         total = stats.get("totalEpisodeCount")
         available = stats.get("episodeFileCount")
-        if not isinstance(total, int) or not isinstance(available, int):
+        if type(total) is not int or type(available) is not int:
             continue
-        if total <= 0:
+        if total <= 0 or available < 0 or available > total:
             continue
         missing = max(0, total - available)
         if missing == 0:
