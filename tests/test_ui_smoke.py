@@ -8,14 +8,14 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
+from qt_app import APP
 import bulkrr
 
 
 class MainWindowSmokeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = APP
         # Headless UI tests must not start background HTTP poster threads.
         cls.poster_patch = patch.object(bulkrr, "poster_url", return_value=None)
         cls.poster_patch.start()
