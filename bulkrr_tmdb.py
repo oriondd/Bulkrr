@@ -1,10 +1,9 @@
-"""Read-only TMDB trending movie/TV discovery with a user-provided API key.
+"""Read-only TMDB trending movie/TV discovery with a user-provided read access token.
 
-TMDB is not queried without explicit user credentials. No API keys are written
+TMDB is not queried without explicit user credentials. No tokens are written
 to Bulkrr settings or logs, and no media is imported automatically.
 """
 import json
-import urllib.parse
 import urllib.request
 
 BASE = "https://api.themoviedb.org/3"
@@ -47,18 +46,19 @@ def normalize_trending(payload, kind):
     return found
 
 
-def fetch_trending(kind, api_key, window="week", limit=20):
+def fetch_trending(kind, access_token, window="week", limit=20):
     if kind not in ("movie", "tv") or window not in ("day", "week"):
         raise ValueError("Unsupported TMDB trending request")
     if type(limit) is not int or not 1 <= limit <= 20:
         raise ValueError("TMDB trending limit must be 1–20")
-    if not isinstance(api_key, str) or not api_key.strip() or len(api_key) > 256:
-        raise ValueError("Provide a TMDB API key")
+    if (not isinstance(access_token, str) or not access_token.strip()
+            or len(access_token) > 512 or any(ch.isspace() for ch in access_token)):
+        raise ValueError("Provide a TMDB API read access token")
     path = f"{BASE}/trending/{kind}/{window}"
-    query = urllib.parse.urlencode({"api_key": api_key.strip(), "language": "en-US"})
     request = urllib.request.Request(
-        path + "?" + query,
-        headers={"Accept": "application/json", "User-Agent": "Bulkrr/2.0"},
+        path + "?language=en-US",
+        headers={"Accept": "application/json", "User-Agent": "Bulkrr/2.0",
+                 "Authorization": "Bearer " + access_token.strip()},
     )
     with urllib.request.urlopen(request, timeout=12) as response:
         raw = response.read(512 * 1024 + 1)
