@@ -38,8 +38,10 @@ from PySide6.QtWidgets import (
     QFileDialog,
 )
 
-ASSET_DIR = Path(__file__).resolve().parent
-APPDIR = Path(os.getenv("APPDATA") or Path.home()) / "Bulkrr"
+from bulkrr_paths import config_dir
+
+ASSET_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+APPDIR = config_dir()
 SETTINGS = APPDIR / "settings.json"
 APPDIR.mkdir(parents=True, exist_ok=True)
 logging.basicConfig(
