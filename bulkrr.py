@@ -1806,8 +1806,12 @@ class Main(QMainWindow):
         config = dict(pending)
         config.update({"approved": True, "search": False})
         self.pending_routed_import = None
-        self.run_worker("routed_import_execute", config=config,
-                        done=self.routed_import_finished)
+        # The preview's finished_data signal can arrive before its thread exits.
+        # Start the write worker only after that thread has fully finished.
+        preview_worker = self.worker
+        preview_worker.finished.connect(
+            lambda: QTimer.singleShot(0, lambda: self.run_worker(
+                "routed_import_execute", config=config, done=self.routed_import_finished)))
 
     def routed_import_finished(self, results):
         counts = {status: sum(r["status"] == status for r in results)
