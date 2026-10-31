@@ -622,8 +622,17 @@ class Worker(QThread):
                             )
                         )
                         continue
+                    try:
+                        profile_id = int(profile)
+                        if profile_id <= 0:
+                            raise ValueError("quality profile must be positive")
+                    except (TypeError, ValueError, OverflowError):
+                        results.append(
+                            (item["input"], "red", "Invalid quality profile ID")
+                        )
+                        continue
                     obj["rootFolderPath"] = folder
-                    obj["qualityProfileId"] = int(profile)
+                    obj["qualityProfileId"] = profile_id
                     obj["monitored"] = True
                     obj["addOptions"] = (
                         {"searchForMovie": bool(self.config.get("search", True))}
