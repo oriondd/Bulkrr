@@ -27,6 +27,23 @@ def main():
     assert window.tabs.indexOf(window.discover_page) >= 0, "Discover workspace is missing"
     assert window.discover_results is not None, "Discover catalog was not initialized"
     assert window.dashboard_featured is not None, "Dashboard featured catalog is missing"
+    assert window.navigation.count() == len(window._navigation_to_tab), (
+        "Sidebar items and workspace mapping differ"
+    )
+    for sidebar_row, tab_index in enumerate(window._navigation_to_tab):
+        window.navigation.setCurrentRow(sidebar_row)
+        app.processEvents()
+        assert window.tabs.currentIndex() == tab_index, (
+            f"Sidebar row {sidebar_row} did not open workspace {tab_index}"
+        )
+        assert window.tabs.widget(tab_index) is not None, (
+            f"Workspace {tab_index} is missing"
+        )
+    window.tabs.setCurrentIndex(window.tabs.indexOf(window.discover_page))
+    app.processEvents()
+    assert window.navigation.currentRow() == window._navigation_to_tab.index(
+        window.tabs.currentIndex()
+    ), "Sidebar did not synchronize with Discover"
 
     QTimer.singleShot(200, app.quit)
     result = app.exec()
