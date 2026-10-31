@@ -1,6 +1,6 @@
 import sys, json, re, os, difflib, urllib.request, urllib.parse, urllib.error, datetime, traceback, logging, copy
 from pathlib import Path
-from PySide6.QtCore import Qt, QThread, Signal, QTimer
+from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize
 from PySide6.QtGui import (
     QColor,
     QBrush,
@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QListWidget,
+    QListWidgetItem,
     QSplitter,
     QSplashScreen,
     QFileDialog,
@@ -1254,6 +1255,17 @@ class Main(QMainWindow):
         self.reset_discovery_button = QPushButton("Show all current discovery results")
         self.reset_discovery_button.clicked.connect(self.reset_discovery_filter)
         self.discover_results = QListWidget()
+        self.discover_results.setObjectName("mediaCatalog")
+        self.discover_results.setViewMode(QListWidget.ViewMode.IconMode)
+        self.discover_results.setFlow(QListWidget.Flow.LeftToRight)
+        self.discover_results.setWrapping(True)
+        self.discover_results.setResizeMode(QListWidget.ResizeMode.Adjust)
+        self.discover_results.setMovement(QListWidget.Movement.Static)
+        self.discover_results.setSpacing(14)
+        self.discover_results.setIconSize(QSize(132, 188))
+        self.discover_results.setGridSize(QSize(176, 246))
+        self.discover_results.setWordWrap(True)
+        self.discover_results.setUniformItemSizes(True)
         self.discover_results.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.discover_add = QPushButton("Add selected titles to import review")
         self.discover_add.clicked.connect(self.queue_discovered)
@@ -1515,7 +1527,12 @@ class Main(QMainWindow):
             self.discover_source_records = list(records)
         self.discover_results.clear()
         for entry in records:
-            self.discover_results.addItem(f"{entry['title']} ({entry['year'] or '?'}) — {entry['type']}")
+            title = entry["title"]
+            year = entry.get("year") or "—"
+            item = QListWidgetItem(f"{title}\\n{year}  ·  {entry['type'].upper()}")
+            item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)
+            item.setToolTip(f"{title} ({year})\\n{str(entry.get('overview') or '')[:500]}")
+            self.discover_results.addItem(item)
         self.logmsg(f"Discovery returned {len(records)} matching titles")
 
     def rank_discovery(self):
