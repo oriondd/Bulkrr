@@ -759,7 +759,7 @@ class MainWindowSmokeTests(unittest.TestCase):
                         window.server_data = {"radarr": {}}
                         window.items = [{
                             "input": "movie: Unsafe", "status": "ready",
-                            "selected": 0, "action": "delete",
+                            "selected": 0, "action": {"unexpected": "delete"},
                             "matches": [{"app": "radarr", "type": "movie",
                                          "id": 123, "data": {"title": "Unsafe"}}],
                             "message": "Ready",
