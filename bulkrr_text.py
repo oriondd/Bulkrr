@@ -1,6 +1,7 @@
 """Text formatting helpers for external media metadata."""
 
 from html.parser import HTMLParser
+import re
 
 
 class _PlainTextParser(HTMLParser):
@@ -33,6 +34,13 @@ def clean_media_overview(value):
     from html import unescape
 
     source = unescape(str(value or "No synopsis available.")).strip()
+    # Some metadata providers escape HTML twice. Normalize only known
+    # formatting tags to avoid interpreting arbitrary escaped user text.
+    source = re.sub(
+        r"(?i)&lt;(/?(?:br|p|div|li))\\s*/?&gt;",
+        lambda match: "<" + match.group(1) + ">",
+        source,
+    )
     parser = _PlainTextParser()
     parser.feed(source)
     parser.close()
