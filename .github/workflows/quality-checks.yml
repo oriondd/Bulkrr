@@ -16,6 +16,11 @@ on:
 permissions:
   contents: read
 
+# Keep only the newest run per branch; older commits are superseded.
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
