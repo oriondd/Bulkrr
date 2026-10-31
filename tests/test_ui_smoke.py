@@ -637,6 +637,18 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_analysis_completion_clears_partial_progress_mapping(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.active_analysis_rows = [4, 8]
+                        window.analysis_worker_finished()
+                        self.assertIsNone(window.active_analysis_rows)
+                    finally:
+                        window.close()
+
     def test_partial_analysis_progress_targets_original_review_row(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
