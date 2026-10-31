@@ -4,8 +4,11 @@ Bulkrr 2.0 supports **data-only** extensions, not executable plugins. An extensi
 can suggest titles for the existing manual-review workflow. It cannot run Python,
 install packages, read API keys, or bypass the import confirmation screen.
 
-Create `%APPDATA%\\Bulkrr\\extensions\\my-list.json` on Windows, or
-`~/Bulkrr/extensions/my-list.json` when APPDATA is not defined.
+Place extension manifests in the platform-specific Bulkrr configuration folder:
+
+- Windows: `%APPDATA%/Bulkrr/extensions/`
+- macOS: `~/Library/Application Support/Bulkrr/extensions/`
+- Linux: `$XDG_CONFIG_HOME/Bulkrr/extensions/` (or `~/.config/Bulkrr/extensions/` when unset).
 
 Example:
 
