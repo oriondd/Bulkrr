@@ -1,4 +1,4 @@
-import sys, json, re, os, difflib, urllib.request, urllib.parse, urllib.error, datetime, traceback, logging, copy
+import sys, json, re, html, os, difflib, urllib.request, urllib.parse, urllib.error, datetime, traceback, logging, copy
 from pathlib import Path
 from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QRect
 from PySide6.QtGui import (
@@ -1559,6 +1559,7 @@ class Main(QMainWindow):
         dashboard = QWidget()
         dashboard_layout = QVBoxLayout(dashboard)
         dashboard_layout.setSpacing(12)
+        dashboard_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         dashboard_layout.setContentsMargins(18, 18, 18, 18)
         hero = CinematicHero()
         hero.setObjectName("dashboardCinematicHero")
@@ -1651,7 +1652,6 @@ class Main(QMainWindow):
             lambda item: tabs.setCurrentIndex(4)
         )
         dashboard_layout.addWidget(self.dashboard_featured)
-        dashboard_layout.addStretch()
         dashboard_scroll = QScrollArea()
         dashboard_scroll.setObjectName("dashboardScroll")
         dashboard_scroll.setWidgetResizable(True)
@@ -2018,7 +2018,7 @@ class Main(QMainWindow):
         overview = re.sub(r"(?i)<br\s*/?>", "\n", overview)
         overview = re.sub(r"(?i)</p\s*>", "\n", overview)
         overview = re.sub(r"<[^>]+>", "", overview)
-        self.discover_detail_overview.setText(overview[:500] + ("…" if len(overview) > 500 else ""))
+        self.discover_detail_overview.setText(html.unescape(overview).strip())
         url = entry.get("poster_url")
         self.discover_detail_poster.setProperty("poster_url", "")
         self.discover_detail_poster.setPixmap(QPixmap())
