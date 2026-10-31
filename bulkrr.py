@@ -1585,7 +1585,7 @@ class Main(QMainWindow):
         ):
             index = (
                 self.active_import_rows[index]
-                if index < len(self.active_import_rows)
+                if 0 <= index < len(self.active_import_rows)
                 else -1
             )
         if 0 <= index < len(self.items):
