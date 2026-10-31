@@ -1320,6 +1320,30 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_discover_refresh_detaches_old_poster_targets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        # Do not start network workers; emulate an outstanding poster.
+                        with patch.object(window, "start_pending_posters"):
+                            window.discovered([{
+                                "title": "Old card", "type": "movie",
+                                "year": 2026, "poster_url": None,
+                            }])
+                            card = window.discover_results.item(0)
+                            featured = window.dashboard_featured.item(0)
+                            url = "https://image.tmdb.org/t/p/w342/example.jpg"
+                            window.poster_inflight[url] = [card, featured]
+                            window.discovered([])
+                            self.assertEqual(window.poster_inflight[url], [])
+                            # Late delivery must not attempt to update deleted cards.
+                            window.poster_loaded(url, b"", "")
+                            self.assertNotIn(url, window.poster_inflight)
+                    finally:
+                        window.close()
+
     def test_tmdb_token_reset_is_session_only(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
