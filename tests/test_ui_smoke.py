@@ -578,6 +578,29 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_resume_preserves_unfinished_placeholders_and_prior_decisions(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        previous = [
+                            {"input": "movie: Existing", "status": "ready", "action": "upgrade",
+                             "duplicate": {"id": 1}, "matches": [], "message": "User selected upgrade"},
+                            {"input": "movie: Pending", "status": "review", "action": "review",
+                             "matches": [], "message": "Analysis stopped before lookup"},
+                        ]
+                        window._resume_previous_items = previous
+                        window.resumed_analysis([{
+                            "input": "movie: Pending", "status": "review", "action": "review",
+                            "matches": [], "message": "Analysis stopped before lookup",
+                        }])
+                        self.assertEqual(window.items[0]["action"], "upgrade")
+                        self.assertEqual(window.items[1]["message"], "Analysis stopped before lookup")
+                        self.assertNotEqual(window.items[1]["status"], "skipped")
+                    finally:
+                        window.close()
+
     def test_partial_category_decisions_preserve_previous_manual_choices(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
