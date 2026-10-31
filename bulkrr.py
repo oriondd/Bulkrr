@@ -63,6 +63,7 @@ from bulkrr_library import missing_movies, missing_series
 from bulkrr_bulk import plan_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_servers import validate_profiles, legacy_profiles
+from bulkrr_updates import fetch_latest_release, update_available
 
 
 class PosterWorker(QThread):
@@ -119,7 +120,9 @@ class Worker(QThread):
 
     def run(self):
         try:
-            if self.task == "connect":
+            if self.task == "check_updates":
+                self.finished_data.emit(fetch_latest_release())
+            elif self.task == "connect":
                 result = {}
                 for app in ("radarr", "sonarr"):
                     c = self.connections.get(app, {})
@@ -725,6 +728,9 @@ class Main(QMainWindow):
         self.connect_btn = QPushButton("Test connections and load settings")
         self.connect_btn.clicked.connect(self.connect_servers)
         self.setup_layout.addWidget(self.connect_btn)
+        self.update_button = QPushButton("Check for Bulkrr updates")
+        self.update_button.clicked.connect(self.check_updates)
+        self.setup_layout.addWidget(self.update_button)
         self.form = QFormLayout()
         self.combo = {}
         for name, label in (
@@ -1055,6 +1061,20 @@ class Main(QMainWindow):
         for app in self.connections:
             self.connection_leds[app].set_status("disconnected")
             self.connection_labels[app].setText("Connection failed — see Activity log")
+
+    def check_updates(self):
+        if self.worker and self.worker.isRunning():
+            return
+        self.run_worker("check_updates", done=self.updates_checked)
+
+    def updates_checked(self, release):
+        if update_available("2.0.0", release["tag"]):
+            answer = QMessageBox.question(self, "Update available", f"Bulkrr {release['tag']} is available. Open the official GitHub release page?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if answer == QMessageBox.StandardButton.Yes:
+                import webbrowser
+                webbrowser.open(release["url"])
+        else:
+            QMessageBox.information(self, "Up to date", "No newer stable GitHub release found.")
 
     def refresh_extra_list(self):
         if not hasattr(self, "extra_list"):
