@@ -1812,8 +1812,10 @@ class Main(QMainWindow):
             return
         pix = QPixmap()
         if pix.loadFromData(data):
+            is_featured = self.dashboard_featured.row(item) >= 0
+            target_size = QSize(90, 128) if is_featured else QSize(132, 188)
             item.setIcon(QIcon(pix.scaled(
-                QSize(132, 188),
+                target_size,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.SmoothTransformation,
             )))
@@ -2137,6 +2139,8 @@ class Main(QMainWindow):
                     f"{self._review_visible_total:,} of {len(self.items):,} shown"
                 )
                 self.update_review_actions()
+                if index == self.table.currentRow():
+                    self.show_selected_poster()
 
     def run_worker(self, task, items=None, config=None, done=None):
         if self.worker and self.worker.isRunning():
