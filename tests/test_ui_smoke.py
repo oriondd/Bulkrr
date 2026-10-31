@@ -698,6 +698,33 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_approved_import_uses_independent_metadata_snapshot(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.settings = {"search": True}
+                        window.server_data = {"connected": True}
+                        window.items = [{
+                            "input": "movie: Snapshot", "status": "ready",
+                            "selected": 0, "message": "Ready",
+                            "matches": [{"app": "radarr", "type": "movie",
+                                         "id": 123, "data": {"title": "Snapshot"}}],
+                        }]
+                        with patch.object(bulkrr.QMessageBox, "question",
+                                          return_value=bulkrr.QMessageBox.StandardButton.Yes):
+                            with patch.object(window, "run_worker") as worker:
+                                window.import_items()
+                                approved = worker.call_args.kwargs["items"]
+                                self.assertIsNot(approved[0], window.items[0])
+                                self.assertEqual(approved[0]["status"], "ready")
+                                self.assertEqual(window.items[0]["status"], "working")
+                                window.items[0]["matches"][0]["data"]["title"] = "Changed"
+                                self.assertEqual(approved[0]["matches"][0]["data"]["title"], "Snapshot")
+                    finally:
+                        window.close()
+
     def test_non_numeric_metadata_id_blocks_import(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
