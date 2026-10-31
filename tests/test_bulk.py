@@ -22,6 +22,9 @@ class BulkPlanningTests(unittest.TestCase):
         self.assertEqual(estimate_storage(8, 1.5), 12)
         with self.assertRaises(ValueError):
             estimate_storage(-1, 2)
+        for invalid in (float("inf"), float("-inf"), float("nan")):
+            with self.subTest(value=str(invalid)), self.assertRaises(ValueError):
+                estimate_storage(1, invalid)
 
 
 if __name__ == "__main__":
