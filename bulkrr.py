@@ -1026,6 +1026,10 @@ class Main(QMainWindow):
         self.bulk_review_skip_btn.clicked.connect(self.skip_all_unresolved)
         self.bulk_review_skip_btn.setObjectName("secondaryAction")
         row.addWidget(self.bulk_review_skip_btn)
+        self.skip_selected_btn = QPushButton("Skip selected rows")
+        self.skip_selected_btn.setObjectName("secondaryAction")
+        self.skip_selected_btn.clicked.connect(self.skip_selected_rows)
+        row.addWidget(self.skip_selected_btn)
         self.review_btn = QPushButton("Confirm / change selected match")
         self.review_btn.clicked.connect(self.review)
         self.review_btn.setObjectName("secondaryAction")
@@ -2400,6 +2404,13 @@ class Main(QMainWindow):
         busy = bool(self.worker and self.worker.isRunning())
         self.review_btn.setEnabled(bool(selected and selected.get("matches")) and not busy)
         self.duplicate_btn.setEnabled(bool(selected and selected.get("duplicate")) and not busy)
+        self.skip_selected_btn.setEnabled(
+            not busy and any(
+                0 <= index.row() < len(self.items)
+                and self.items[index.row()].get("status") in ("ready", "review", "duplicate", "error")
+                for index in self.table.selectionModel().selectedRows()
+            )
+        )
         self.add_btn.setEnabled(
             not busy and any(item.get("status") == "ready" for item in self.items)
         )
@@ -2632,6 +2643,33 @@ class Main(QMainWindow):
         )
         self.refresh()
         self.table.selectRow(row)
+
+    def skip_selected_rows(self):
+        """Exclude only explicitly selected rows, without network writes."""
+        if self.worker and self.worker.isRunning():
+            return
+        rows = sorted({index.row() for index in self.table.selectionModel().selectedRows()})
+        candidates = [
+            row for row in rows
+            if 0 <= row < len(self.items)
+            and self.items[row].get("status") in ("ready", "review", "duplicate", "error")
+        ]
+        if not candidates:
+            return
+        if QMessageBox.question(
+            self, "Exclude selected titles",
+            f"Exclude {len(candidates)} selected title(s) from this import preview?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        ) != QMessageBox.StandardButton.Yes:
+            return
+        for row in candidates:
+            item = self.items[row]
+            item["status"] = "skipped"
+            item["action"] = "skip"
+            item["message"] = "Excluded from import by user selection"
+        self.logmsg(f"Excluded {len(candidates)} selected titles (preview only)")
+        self.refresh()
 
     def skip_all_duplicates(self):
         if self.worker and self.worker.isRunning():
