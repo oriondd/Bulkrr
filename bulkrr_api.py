@@ -27,9 +27,9 @@ def get_json(base, key, path, method="GET", payload=None):
     for attempt in range(attempts):
         try:
             with urllib.request.urlopen(request, timeout=20) as response:
-                body = response.read(8 * 1024 * 1024 + 1)
-                if len(body) > 8 * 1024 * 1024:
-                    raise ValueError("Server response exceeds 8 MiB limit")
+                body = response.read(32 * 1024 * 1024 + 1)
+                if len(body) > 32 * 1024 * 1024:
+                    raise ValueError("Server response exceeds 32 MiB limit")
                 return json.loads(body) if body else {}
         except urllib.error.HTTPError as exc:
             retryable = exc.code in (429, 502, 503, 504)
