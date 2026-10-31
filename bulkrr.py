@@ -1533,7 +1533,37 @@ class Main(QMainWindow):
             item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)
             item.setToolTip(f"{title} ({year})\\n{str(entry.get('overview') or '')[:500]}")
             self.discover_results.addItem(item)
+            url = entry.get("poster_url")
+            if isinstance(url, str) and url.startswith(("https://image.tmdb.org/t/p/", "https://s4.anilist.co/", "https://s3.anilist.co/")):
+                self.fetch_discovery_artwork(url, item)
         self.logmsg(f"Discovery returned {len(records)} matching titles")
+
+    def fetch_discovery_artwork(self, url, item):
+        """Load metadata artwork asynchronously; never block the catalog UI."""
+        if url in self.poster_cache:
+            self.apply_discovery_artwork(item, url, self.poster_cache[url])
+            return
+        if url in self.poster_inflight:
+            self.poster_inflight[url].append(item)
+            return
+        self.poster_inflight[url] = [item]
+        worker = PosterWorker(url)
+        self.poster_workers.append(worker)
+        worker.loaded.connect(self.poster_loaded)
+        worker.finished.connect(lambda: self.poster_worker_finished(worker))
+        worker.start()
+
+    def apply_discovery_artwork(self, item, url, data):
+        if not data or self.discover_results.row(item) < 0:
+            return
+        pix = QPixmap()
+        if pix.loadFromData(data):
+            item.setIcon(QIcon(pix.scaled(
+                QSize(132, 188),
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )))
+
 
     def rank_discovery(self):
         records = getattr(self, "discover_source_records", [])
@@ -2820,7 +2850,10 @@ class Main(QMainWindow):
         if data:
             self.poster_cache[url] = data
         for target in self.poster_inflight.pop(url, []):
-            self.display_poster(target, url, data)
+            if isinstance(target, QListWidgetItem):
+                self.apply_discovery_artwork(target, url, data)
+            else:
+                self.display_poster(target, url, data)
         if error:
             self.logmsg(
                 f"Artwork unavailable ({urllib.parse.urlparse(url).hostname}): {error}"
