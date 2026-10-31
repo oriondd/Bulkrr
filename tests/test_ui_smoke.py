@@ -696,6 +696,31 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_progress_updates_only_changed_review_filter_row(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "movie: First", "status": "ready",
+                             "matches": [], "selected": -1, "message": "Ready"},
+                            {"input": "movie: Second", "status": "ready",
+                             "matches": [], "selected": -1, "message": "Ready"},
+                        ]
+                        window.refresh()
+                        window.review_filter.setCurrentIndex(1)
+                        self.assertTrue(window.table.isRowHidden(0))
+                        self.assertTrue(window.table.isRowHidden(1))
+                        with patch.object(window, "apply_review_filter") as full_filter:
+                            window.row_update(1, "error", "Lookup failed")
+                            full_filter.assert_not_called()
+                        self.assertTrue(window.table.isRowHidden(0))
+                        self.assertFalse(window.table.isRowHidden(1))
+                        self.assertIn("1 of 2 shown", window.review_visible_count.text())
+                    finally:
+                        window.close()
+
     def test_progress_updates_existing_row_without_full_table_refresh(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
