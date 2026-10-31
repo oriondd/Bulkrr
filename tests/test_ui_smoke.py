@@ -698,6 +698,29 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_mismatched_radarr_series_selection_blocks_import(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.settings = {"search": True}
+                        window.server_data = {"radarr": {}}
+                        window.items = [{
+                            "input": "series: Wrong server", "status": "ready",
+                            "selected": 0, "matches": [{
+                                "app": "radarr", "type": "series",
+                                "id": 123, "data": {"title": "Wrong server"},
+                            }], "message": "Ready",
+                        }]
+                        with patch.object(window, "run_worker") as worker:
+                            with patch.object(bulkrr.QMessageBox, "warning") as warning:
+                                window.import_items()
+                        worker.assert_not_called()
+                        self.assertIn("Invalid approved matches", warning.call_args.args)
+                    finally:
+                        window.close()
+
     def test_invalid_selected_match_blocks_import_before_approval(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
