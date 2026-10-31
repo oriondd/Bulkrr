@@ -1292,6 +1292,50 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_dashboard_navigation_and_discover_refresh(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        self.assertEqual(window.tabs.count(), 6)
+                        self.assertEqual(window.tabs.tabText(0), "Dashboard")
+                        self.assertEqual(window._navigation_to_tab, [0, 2, 4, 3, 1, 5])
+                        records = [
+                            {"title": "Sample Movie", "type": "movie", "year": 2026,
+                             "genres": ["Drama"], "poster_url": None},
+                            {"title": "Sample Show", "type": "tv", "year": 2025,
+                             "genres": [], "poster_url": None},
+                        ]
+                        window.discovered(records)
+                        self.assertEqual(window.discover_results.count(), 2)
+                        self.assertEqual(window.dashboard_featured.count(), 2)
+                        window.show_discovery_details(0)
+                        self.assertEqual(window.discover_detail_title.text(), "Sample Movie")
+                        window.discovered([])
+                        self.assertEqual(window.discover_results.count(), 0)
+                        self.assertEqual(window.dashboard_featured.count(), 0)
+                        self.assertEqual(window.discover_detail_title.text(),
+                                         "Choose a poster to explore")
+                    finally:
+                        window.close()
+
+    def test_tmdb_token_reset_is_session_only(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        with patch.object(bulkrr.QInputDialog, "getText",
+                                          return_value=("test-token", True)) as prompt:
+                            self.assertEqual(window.get_tmdb_token(), "test-token")
+                            self.assertEqual(window.get_tmdb_token(), "test-token")
+                            prompt.assert_called_once()
+                        window.clear_tmdb_token()
+                        self.assertEqual(window._tmdb_session_token, "")
+                    finally:
+                        window.close()
+
     def test_routed_import_worker_refuses_unapproved_writes(self):
         worker = bulkrr.Worker("routed_import_execute", {}, config={
             "batches": [], "credentials": {}, "approved": False})
