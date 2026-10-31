@@ -1,4 +1,4 @@
-import sys, json, re, os, difflib, urllib.request, urllib.parse, urllib.error, datetime, traceback, logging
+import sys, json, re, os, difflib, urllib.request, urllib.parse, urllib.error, datetime, traceback, logging, copy
 from pathlib import Path
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
 from PySide6.QtGui import (
@@ -3073,13 +3073,16 @@ class Main(QMainWindow):
         self.logmsg(
             f"Import approved for {len(pending)} titles; automatic searches={'on' if search_after_approval else 'off'}"
         )
+        # Freeze the exact approved matches and actions before changing GUI
+        # statuses; the worker must not share mutable review dictionaries.
+        approved_snapshot = copy.deepcopy(pending)
         for item in pending:
             item["status"] = "working"
             item["message"] = "Queued for import"
         self.refresh()
         self.run_worker(
             "import",
-            items=pending,
+            items=approved_snapshot,
             config={**self.settings, "dry_run": dry_run, "search": search_after_approval},
             done=self.imported,
         )
