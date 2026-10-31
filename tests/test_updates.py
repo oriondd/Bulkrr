@@ -1,8 +1,22 @@
 import unittest
-from bulkrr_updates import parse_release, parse_version, update_available
+import io
+from unittest.mock import patch
+from urllib.error import HTTPError
+from bulkrr_updates import parse_release, parse_version, update_available, fetch_latest_release
 
 
 class UpdateTests(unittest.TestCase):
+    def test_no_published_release_is_not_an_error(self):
+        error = HTTPError("https://api.github.com/repos/oriondd/Bulkrr/releases/latest", 404, "Not Found", {}, io.BytesIO(b""))
+        with patch("bulkrr_updates.urllib.request.urlopen", side_effect=error):
+            self.assertIsNone(fetch_latest_release())
+
+    def test_non_404_update_error_is_not_suppressed(self):
+        error = HTTPError("https://api.github.com/repos/oriondd/Bulkrr/releases/latest", 403, "Forbidden", {}, io.BytesIO(b""))
+        with patch("bulkrr_updates.urllib.request.urlopen", side_effect=error):
+            with self.assertRaises(HTTPError):
+                fetch_latest_release()
+
     def test_versions(self):
         self.assertEqual(parse_version("v2.1.3-beta"), (2, 1, 3))
         self.assertTrue(update_available("2.0.0", "v2.0.1"))
