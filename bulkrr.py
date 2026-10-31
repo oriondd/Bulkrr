@@ -1042,6 +1042,10 @@ class Main(QMainWindow):
         self.skip_selected_btn.setObjectName("secondaryAction")
         self.skip_selected_btn.clicked.connect(self.skip_selected_rows)
         row.addWidget(self.skip_selected_btn)
+        self.restore_selected_btn = QPushButton("Restore excluded rows")
+        self.restore_selected_btn.setObjectName("secondaryAction")
+        self.restore_selected_btn.clicked.connect(self.restore_selected_rows)
+        row.addWidget(self.restore_selected_btn)
         self.review_btn = QPushButton("Confirm / change selected match")
         self.review_btn.clicked.connect(self.review)
         self.review_btn.setObjectName("secondaryAction")
@@ -2473,6 +2477,12 @@ class Main(QMainWindow):
                 for index in self.table.selectionModel().selectedRows()
             )
         )
+        self.restore_selected_btn.setEnabled(not busy and any(
+            0 <= index.row() < len(self.items)
+            and self.items[index.row()].get("status") == "skipped"
+            and self.items[index.row()].get("message") == "Excluded from import by user selection"
+            for index in self.table.selectionModel().selectedRows()
+        ))
         self.add_btn.setEnabled(
             not busy and any(item.get("status") == "ready" for item in self.items)
         )
@@ -2738,6 +2748,26 @@ class Main(QMainWindow):
             item["message"] = "Excluded from import by user selection"
         self.logmsg(f"Excluded {len(candidates)} selected titles (preview only)")
         self.refresh()
+
+    def restore_selected_rows(self):
+        """Undo manual exclusions without approving an uncertain metadata match."""
+        if self.worker and self.worker.isRunning():
+            return
+        rows = sorted({index.row() for index in self.table.selectionModel().selectedRows()})
+        count = 0
+        for row in rows:
+            if not 0 <= row < len(self.items):
+                continue
+            item = self.items[row]
+            if item.get("status") != "skipped" or item.get("message") != "Excluded from import by user selection":
+                continue
+            item["status"] = "review" if item.get("matches") else "error"
+            item["action"] = "review" if item.get("matches") else "skip"
+            item["message"] = "Restored exclusion — verify match before approving"
+            count += 1
+        if count:
+            self.logmsg(f"Restored {count} manually excluded title(s) for review")
+            self.refresh()
 
     def skip_all_duplicates(self):
         if self.worker and self.worker.isRunning():
