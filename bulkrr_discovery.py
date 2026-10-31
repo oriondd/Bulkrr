@@ -18,18 +18,26 @@ def normalize_discovery(records, kind):
         if not isinstance(title, str) or not title.strip():
             continue
         title = title.strip()
-        raw_date = record.get("release_date") or record.get("first_air_date") or ""
+        raw_date = record.get("release_date") or record.get("first_air_date") or record.get("inCinemas") or record.get("firstAired") or ""
+        if not isinstance(raw_date, str):
+            raw_date = ""
+        if not raw_date and isinstance(record.get("year"), int):
+            raw_date = str(record["year"])
         year = int(raw_date[:4]) if isinstance(raw_date, str) and len(raw_date) >= 4 and raw_date[:4].isdigit() else None
         key = (kind, title.casefold(), year)
         if key in seen:
             continue
         seen.add(key)
+        try:
+            popularity = float(record.get("popularity") or 0)
+        except (TypeError, ValueError, OverflowError):
+            popularity = 0.0
         result.append({
             "title": title,
             "type": kind,
             "year": year,
             "overview": str(record.get("overview") or "")[:1000],
-            "popularity": float(record.get("popularity") or 0),
+            "popularity": popularity,
             "release_date": raw_date if isinstance(raw_date, str) else "",
         })
     return result
