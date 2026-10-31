@@ -42,8 +42,12 @@ jobs:
             $size = (Get-Item "Bulkrr-splash.mp4").Length
             if ($size -lt 100000) { throw "Bulkrr-splash.mp4 is unexpectedly small ($size bytes)" }
             Write-Host "Cinematic intro found ($size bytes); including it in the Windows preview."
+          } elseif (Test-Path "Bulkrr splash.mp4") {
+            $size = (Get-Item "Bulkrr splash.mp4").Length
+            if ($size -lt 100000) { throw "Bulkrr splash.mp4 is unexpectedly small ($size bytes)" }
+            Write-Host "Cinematic intro found as Bulkrr splash.mp4 ($size bytes)."
           } else {
-            Write-Warning "Bulkrr-splash.mp4 is not in the repository; the installer will use the static splash."
+            Write-Warning "No cinematic splash MP4 found; the installer will use the static splash."
           }
       - name: Package Windows preview
         shell: pwsh
@@ -54,6 +58,7 @@ jobs:
           if (Test-Path "Bulkrr.ico") { $args += @("--add-data", "Bulkrr.ico;.") }
           if (Test-Path "Bulkrr-splash.png") { $args += @("--add-data", "Bulkrr-splash.png;.") }
           if (Test-Path "Bulkrr-splash.mp4") { $args += @("--add-data", "Bulkrr-splash.mp4;.") }
+          if (Test-Path "Bulkrr splash.mp4") { $args += @("--add-data", "Bulkrr splash.mp4;.") }
           $args += "bulkrr.py"
           python -m PyInstaller @args
       - name: Install Inno Setup
