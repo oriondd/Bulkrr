@@ -2977,6 +2977,18 @@ class Main(QMainWindow):
         pending = [
             i for i in self.items if i["status"] == "ready" and i["selected"] >= 0
         ]
+        unfinished = sum(
+            item.get("status") == "working"
+            or item.get("message") == "Analysis stopped before lookup"
+            for item in self.items
+        )
+        if unfinished:
+            QMessageBox.warning(
+                self, "Analysis incomplete",
+                f"{unfinished} title(s) are still being analyzed or awaiting resume. "
+                "Finish or resolve them before approving an import.",
+            )
+            return
         yellow = sum(i["status"] == "review" for i in self.items)
         unresolved = sum(i["status"] == "duplicate" for i in self.items)
         if unresolved:
