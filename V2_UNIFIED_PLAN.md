@@ -42,7 +42,9 @@ This branch combines Phase 3 (library management), Phase 4 (discovery), and Phas
   Windows acceptance verification.
 - Local recommendations use only genre frequencies in connected library
   metadata; viewing history and playback activity are not collected.
-- Franchise matching is title-based, not authoritative TMDB collection lookup.
+- Franchise discovery supports both fuzzy title-based matching and authoritative
+  TMDB collection expansion when a user supplies a verified collection ID and
+  temporary API read access token.
 - Named server profiles switch the active destination; simultaneous multi-server
   import routing is not implemented.
 - CI results and the Windows installer still require verification before the
