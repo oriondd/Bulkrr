@@ -3010,6 +3010,16 @@ class Main(QMainWindow):
         pending = [
             i for i in self.items if i["status"] == "ready" and i["selected"] >= 0
         ]
+        # Input names are also result correlation keys. Empty names cannot be
+        # mapped safely to the approved rows.
+        unnamed = [item for item in pending if not str(item.get("input", "")).strip()]
+        if unnamed:
+            QMessageBox.warning(
+                self, "Missing approved titles",
+                f"{len(unnamed)} approved row(s) have no input title. "
+                "Correct or remove them before importing.",
+            )
+            return
         duplicate_inputs = set()
         seen_inputs = set()
         for item in pending:
