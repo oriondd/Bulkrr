@@ -43,8 +43,8 @@ This branch combines Phase 3 (library management), Phase 4 (discovery), and Phas
 - Local recommendations use only genre frequencies in connected library
   metadata; viewing history and playback activity are not collected.
 - Franchise discovery supports both fuzzy title-based matching and authoritative
-  TMDB collection expansion when a user supplies a verified collection ID and
-  temporary API read access token.
+  TMDB collection name search followed by expansion of a verified collection ID,
+  using a temporary API read access token.
 - Named server profiles switch the active destination; simultaneous multi-server
   import routing is not implemented.
 - CI results and the Windows installer still require verification before the
