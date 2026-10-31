@@ -2321,6 +2321,7 @@ class Main(QMainWindow):
         self.review_summary_label.setText(review_summary(self.items))
         previous_row = self.table.currentRow()
         self.table.blockSignals(True)
+        self.table.setUpdatesEnabled(False)
         self.table.setRowCount(len(self.items))
         for row, item in enumerate(self.items):
             status = item["status"]
@@ -2358,15 +2359,18 @@ class Main(QMainWindow):
                 quality,
                 item.get("message", ""),
             )
-            led = StatusLED(status)
-            led.set_status(status, item.get("message", ""))
-            holder = QWidget()
-            holder_layout = QHBoxLayout(holder)
-            holder_layout.setContentsMargins(0, 0, 0, 0)
-            holder_layout.addStretch()
-            holder_layout.addWidget(led)
-            holder_layout.addStretch()
-            self.table.setCellWidget(row, 0, holder)
+            # Avoid creating one QWidget per title in large imports.
+            indicator = QTableWidgetItem("●")
+            indicator.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            indicator.setToolTip(labels.get(status, status) + "\\n" + item.get("message", ""))
+            indicator.setFlags(indicator.flags() & ~Qt.ItemFlag.ItemIsEditable)
+            indicator.setForeground(QBrush(QColor({
+                "ready": "#62e49b", "done": "#62e49b",
+                "skipped": "#8292A9", "review": "#ffce69",
+                "duplicate": "#ff7272", "error": "#ff7272",
+                "failed": "#ff7272", "working": "#77bfff",
+            }.get(status, "#e9edf6"))))
+            self.table.setItem(row, 0, indicator)
             for col, value in enumerate(values, 1):
                 cell = QTableWidgetItem(str(value))
                 cell.setFlags(cell.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -2386,6 +2390,7 @@ class Main(QMainWindow):
             self.table.selectRow(previous_row)
         self.table.blockSignals(False)
         self.apply_review_filter()
+        self.table.setUpdatesEnabled(True)
         self.table.viewport().update()
         self.show_selected_poster()
         self.update_review_actions()
