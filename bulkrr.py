@@ -1619,10 +1619,12 @@ class Main(QMainWindow):
                 now_visible = self.review_row_visible(self.items[index])
                 if was_visible != now_visible:
                     self.table.setRowHidden(index, not now_visible)
-                # A full filter pass remains available for user filter/search changes.
+                    self._review_visible_total = getattr(
+                        self, "_review_visible_total", 0
+                    ) + (1 if now_visible else -1)
+                # Full refresh/filter resets the cached count; progress is O(1).
                 self.review_visible_count.setText(
-                    f"{sum(not self.table.isRowHidden(row) for row in range(self.table.rowCount())):,} "
-                    f"of {len(self.items):,} shown"
+                    f"{self._review_visible_total:,} of {len(self.items):,} shown"
                 )
                 self.update_review_actions()
 
@@ -2530,6 +2532,7 @@ class Main(QMainWindow):
             if self.table.isRowHidden(row) == show:
                 self.table.setRowHidden(row, not show)
             visible += int(show)
+        self._review_visible_total = visible
         self.review_visible_count.setText(f"{visible:,} of {len(self.items):,} shown")
 
     def update_review_actions(self):
