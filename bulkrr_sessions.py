@@ -4,6 +4,8 @@ Snapshots are advisory. Import matches must be reanalyzed against live
 Sonarr/Radarr libraries before the user can import anything.
 """
 import json
+import os
+import tempfile
 from pathlib import Path
 from bulkrr_imports import normalize_titles
 
@@ -53,8 +55,6 @@ def decode_snapshot(data):
 
 
 def save_review(path, titles, items):
-    import os
-    import tempfile
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     temp = None
