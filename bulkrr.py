@@ -2310,7 +2310,7 @@ class Main(QMainWindow):
             for item in previous
         ]
         self._resume_previous_items = []
-        self.apply_category_decisions()
+        self.apply_category_decisions(items)
         self.refresh()
         self.logmsg(f"Resume pass processed {len(items)} title(s)")
 
@@ -2338,10 +2338,10 @@ class Main(QMainWindow):
             "Existing titles were skipped and unmatched titles excluded; review remaining yellow entries."
         )
 
-    def apply_category_decisions(self):
-        """Local review decisions only. No Radarr/Sonarr API writes."""
+    def apply_category_decisions(self, items=None):
+        """Local review decisions only. Preserve prior manual choices on partial rechecks."""
         counts = {"existing": 0, "unmatched": 0, "ambiguous": 0}
-        for item in self.items:
+        for item in (self.items if items is None else items):
             if item.get("message") == "Analysis stopped before lookup":
                 continue
             if item.get("duplicate"):
@@ -2628,7 +2628,7 @@ class Main(QMainWindow):
             self.items[row] = results[0]
         self._edit_recheck_row = -1
         self._edit_recheck_previous = []
-        self.apply_category_decisions()
+        self.apply_category_decisions(results[:1])
         self.refresh()
         if 0 <= row < len(self.items):
             self.table.selectRow(row)
