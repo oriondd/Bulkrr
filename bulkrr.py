@@ -2365,6 +2365,7 @@ class Main(QMainWindow):
         self.logmsg("Stop requested; waiting for the active metadata lookup to finish")
 
     def analysis_worker_finished(self):
+        self.active_analysis_rows = None
         self.stop_analysis_btn.setEnabled(False)
         self.stop_analysis_btn.setText("Stop after current title")
         self.analyze_btn.setEnabled(True)
