@@ -472,6 +472,31 @@ class MainWindowSmokeTests(unittest.TestCase):
         self.assertEqual(results[0][0]["status"], "added")
         self.assertTrue(api.call_args.args[4]["addOptions"]["searchForMissingEpisodes"])
 
+    def test_review_filters_and_sidebar_navigation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        self.assertEqual(window.navigation.count(), 5)
+                        self.assertEqual(window.tabs.currentIndex(), 1)
+                        window.items = [
+                            {"input": "Ready", "matches": [], "selected": -1, "status": "ready"},
+                            {"input": "Review", "matches": [], "selected": -1, "status": "review"},
+                            {"input": "Skipped", "matches": [], "selected": -1, "status": "skipped"},
+                        ]
+                        window.refresh()
+                        window.review_filter.setCurrentIndex(1)
+                        self.assertEqual([window.table.isRowHidden(i) for i in range(3)],
+                                         [True, False, True])
+                        window.review_filter.setCurrentIndex(3)
+                        self.assertEqual([window.table.isRowHidden(i) for i in range(3)],
+                                         [True, True, False])
+                        window.navigation.setCurrentRow(4)
+                        self.assertEqual(window.tabs.currentIndex(), 4)
+                    finally:
+                        window.close()
+
     def test_category_decisions_are_preview_only_and_preserve_ambiguous_review(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
