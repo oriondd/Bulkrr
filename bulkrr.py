@@ -61,6 +61,7 @@ from bulkrr_review import review_summary, STATUS_LABELS, match_confidence
 from bulkrr_theme import DARK_THEME
 from bulkrr_library import missing_movies, missing_series
 from bulkrr_bulk import plan_searches, estimate_storage
+from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 
 
 class PosterWorker(QThread):
@@ -136,6 +137,15 @@ class Worker(QThread):
                         f"{app.title()} connected (v{info.get('version','?')})."
                     )
                 self.finished_data.emit(result)
+            elif self.task == "discover":
+                kind = self.config["kind"]
+                app = "radarr" if kind == "movie" else "sonarr"
+                if app not in self.connections:
+                    raise ValueError(f"Connect to {app.title()} to discover {kind} titles")
+                endpoint = "movie" if app == "radarr" else "series"
+                term = urllib.parse.quote(self.config["term"])
+                records = self.call(app, f"{endpoint}/lookup?term={term}")
+                self.finished_data.emit(normalize_discovery(records[:100], kind))
             elif self.task == "bulk_search":
                 result = {"queued": 0, "errors": []}
                 for app in ("radarr", "sonarr"):
@@ -838,6 +848,25 @@ class Main(QMainWindow):
         library_layout.addWidget(self.library_summary)
         library_layout.addWidget(self.library_layout_table)
         tabs.addTab(library_page, "3. Library inventory")
+        discover_page = QWidget()
+        discover_layout = QVBoxLayout(discover_page)
+        discover_layout.addWidget(QLabel("Browse metadata from your connected servers; review every title before import."))
+        self.discover_kind = QComboBox()
+        self.discover_kind.addItems(["movie", "tv", "anime"])
+        discover_layout.addWidget(self.discover_kind)
+        self.discover_query = QLineEdit()
+        self.discover_query.setPlaceholderText("Search for movies, shows or anime")
+        discover_layout.addWidget(self.discover_query)
+        self.discover_button = QPushButton("Find titles")
+        self.discover_button.clicked.connect(self.discover_titles)
+        discover_layout.addWidget(self.discover_button)
+        self.discover_results = QListWidget()
+        self.discover_results.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        discover_layout.addWidget(self.discover_results)
+        self.discover_add = QPushButton("Add selected titles to import review")
+        self.discover_add.clicked.connect(self.queue_discovered)
+        discover_layout.addWidget(self.discover_add)
+        tabs.addTab(discover_page, "4. Discover")
         self.log = QTextEdit()
         self.log.setReadOnly(True)
         self.log.setPlaceholderText(
@@ -879,6 +908,37 @@ class Main(QMainWindow):
             summary += " | Errors: " + "; ".join(data["errors"])
         self.library_summary.setText(summary)
         self.logmsg("Library inventory: " + summary)
+
+    def discover_titles(self):
+        if self.worker and self.worker.isRunning():
+            return
+        term = self.discover_query.text().strip()
+        if not term:
+            QMessageBox.information(self, "Search term", "Enter a title to discover.")
+            return
+        self.discover_button.setEnabled(False)
+        self.run_worker("discover", config={"kind": self.discover_kind.currentText(), "term": term}, done=self.discovered)
+
+    def discovered(self, records):
+        self.discover_button.setEnabled(True)
+        self.discover_records = records
+        self.discover_results.clear()
+        for entry in records:
+            self.discover_results.addItem(f"{entry['title']} ({entry['year'] or '?'}) — {entry['type']}")
+        self.logmsg(f"Discovery returned {len(records)} matching titles")
+
+    def queue_discovered(self):
+        records = getattr(self, "discover_records", [])
+        selected = [records[index.row()] for index in self.discover_results.selectionModel().selectedRows() if index.row() < len(records)]
+        lines = queue_lines(selected)
+        if not lines:
+            return
+        titles = normalize_titles(self.input.toPlainText().splitlines() + lines)
+        self.input.setPlainText("\\n".join(titles))
+        self.items = []
+        self.refresh()
+        self.tabs.setCurrentIndex(1)
+        self.logmsg(f"Queued {len(lines)} discovered titles for manual review")
 
     def update_storage_estimate(self):
         try:
