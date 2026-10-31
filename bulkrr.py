@@ -10,6 +10,8 @@ from PySide6.QtGui import (
     QPen,
     QIcon,
 )
+from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -3993,19 +3995,51 @@ class Main(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(str(ASSET_DIR / "Bulkrr.ico")))
-    # Use the existing branded image until the user-supplied intro video
-    # is ready for integration; don't substitute an unrelated animation.
-    pix = QPixmap(str(ASSET_DIR / "Bulkrr-splash.png"))
-    splash = QSplashScreen(pix) if not pix.isNull() else None
-    if splash:
-        splash.show()
-        app.processEvents()
+    video_path = ASSET_DIR / "Bulkrr-splash.mp4"
+    splash = None
+    intro = None
+    player = None
+    audio = None
+    if video_path.is_file():
+        from PySide6.QtCore import QUrl
+        intro = QVideoWidget()
+        intro.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        intro.resize(960, 540)
+        intro.move(app.primaryScreen().availableGeometry().center() - intro.rect().center())
+        player = QMediaPlayer(intro)
+        audio = QAudioOutput(intro)
+        player.setAudioOutput(audio)
+        player.setVideoOutput(intro)
+        player.setSource(QUrl.fromLocalFile(str(video_path)))
+        intro.show()
+        player.play()
+    else:
+        pix = QPixmap(str(ASSET_DIR / "Bulkrr-splash.png"))
+        splash = QSplashScreen(pix) if not pix.isNull() else None
+        if splash:
+            splash.show()
+            app.processEvents()
     w = Main()
+    shown = False
 
     def show_main():
+        global shown
+        if shown:
+            return
+        shown = True
+        if player:
+            player.stop()
+        if intro:
+            intro.close()
         w.show()
         if splash:
             splash.finish(w)
 
-    QTimer.singleShot(1800 if splash else 0, show_main)
+    if player:
+        player.mediaStatusChanged.connect(
+            lambda status: show_main()
+            if status == QMediaPlayer.MediaStatus.EndOfMedia else None
+        )
+        player.errorOccurred.connect(lambda *_: show_main())
+    QTimer.singleShot(5500 if player else (1800 if splash else 0), show_main)
     sys.exit(app.exec())
