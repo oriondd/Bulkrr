@@ -1591,6 +1591,7 @@ class Main(QMainWindow):
         if not getattr(self, "_ranking_discovery", False):
             self.discover_source_records = list(records)
         self.discover_results.clear()
+        self.show_discovery_details(-1)
         for entry in records:
             title = entry["title"]
             year = entry.get("year") or "—"
