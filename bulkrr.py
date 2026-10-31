@@ -2396,6 +2396,9 @@ class Main(QMainWindow):
         previous_row = self.table.currentRow()
         self.table.blockSignals(True)
         self.table.setUpdatesEnabled(False)
+        # Prevent sorting from moving rows while positional results are rendered.
+        sorting_enabled = self.table.isSortingEnabled()
+        self.table.setSortingEnabled(False)
         self.table.setRowCount(len(self.items))
         for row, item in enumerate(self.items):
             status = item["status"]
@@ -2464,6 +2467,7 @@ class Main(QMainWindow):
             self.table.selectRow(previous_row)
         self.table.blockSignals(False)
         self.apply_review_filter()
+        self.table.setSortingEnabled(sorting_enabled)
         self.table.setUpdatesEnabled(True)
         self.table.viewport().update()
         self.show_selected_poster()
