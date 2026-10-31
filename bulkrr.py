@@ -1385,20 +1385,25 @@ class Main(QMainWindow):
                     self, "Incomplete", "Choose required folders and quality profiles."
                 )
                 return
-        APPDIR.mkdir(parents=True, exist_ok=True)
-        SETTINGS.write_text(json.dumps(data, indent=2))
-        self.settings = data
         try:
             import keyring
-
             for app in self.server_data:
                 keyring.set_password("Bulkrr", app, self.key[app].text().strip())
-        except Exception:
-            QMessageBox.information(
-                self,
-                "API keys not saved",
-                "Install the optional 'keyring' package to securely remember API keys. You can re-enter them next time.",
+        except Exception as exc:
+            QMessageBox.warning(
+                self, "API keys not saved",
+                "The operating system credential store could not save API keys. "
+                "Your preferences will not be written until credentials are secure. "
+                f"Details: {type(exc).__name__}"
             )
+            return
+        try:
+            APPDIR.mkdir(parents=True, exist_ok=True)
+            SETTINGS.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        except OSError as exc:
+            QMessageBox.warning(self, "Could not save preferences", str(exc))
+            return
+        self.settings = data
         self.logmsg("Preferences saved. Ready for bulk imports.")
         QMessageBox.information(
             self, "Ready", "Connected and configured. You can now analyze titles."
