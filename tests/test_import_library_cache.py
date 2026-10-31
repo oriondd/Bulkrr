@@ -85,6 +85,8 @@ class ImportLibraryCacheTests(unittest.TestCase):
             (["invalid", "path"], 1, "Invalid root folder"),
             ("/movies", "not-a-number", "Invalid quality profile"),
             ("/movies", 0, "Invalid quality profile"),
+            ("/movies", True, "Invalid quality profile"),
+            ("/movies", 1.5, "Invalid quality profile"),
         ):
             with self.subTest(folder=folder, profile=profile):
                 worker = bulkrr.Worker(
@@ -104,6 +106,27 @@ class ImportLibraryCacheTests(unittest.TestCase):
                 worker.run()
                 self.assertEqual(output[0][0][1], "red")
                 self.assertIn(expected, output[0][0][2])
+                self.assertFalse(any(method == "POST" for _, _, method in calls))
+
+    def test_live_import_rejects_boolean_and_fractional_profiles(self):
+        for profile in (True, 1.5):
+            with self.subTest(profile=profile):
+                worker = bulkrr.Worker(
+                    "import", {"radarr": {"url": "http://example.invalid", "key": "test"}},
+                    items=[approved("First", 101)],
+                    config={"movie_folder": "/movies", "radarr_profile": profile,
+                            "search": False, "dry_run": False},
+                )
+                calls = []
+                output = []
+                def fake_call(app, endpoint, method="GET", payload=None):
+                    calls.append((app, endpoint, method))
+                    return []
+                worker.call = fake_call
+                worker.finished_data.connect(output.append)
+                worker.run()
+                self.assertEqual(output[0][0][1], "red")
+                self.assertIn("Invalid quality profile", output[0][0][2])
                 self.assertFalse(any(method == "POST" for _, _, method in calls))
 
     def test_invalid_profile_does_not_abort_entire_batch(self):
