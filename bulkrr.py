@@ -953,6 +953,8 @@ class Main(QMainWindow):
         rows += [("Sonarr", s, str(s["missing"])) for s in data["series"]]
         self.library_entries = rows
         self.library_counts = (len(data["movies"]), sum(show["missing"] for show in data["series"]))
+        if data.get("errors"):
+            QMessageBox.warning(self, "Incomplete library scan", "\n".join(data["errors"]))
         self.update_storage_estimate()
         self.library_layout_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.library_layout_table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
