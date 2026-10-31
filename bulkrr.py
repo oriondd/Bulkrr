@@ -1356,6 +1356,8 @@ class Main(QMainWindow):
         if task == "trending_tmdb":
             self.worker.finished.connect(lambda: self.tmdb_movie_button.setEnabled(True))
             self.worker.finished.connect(lambda: self.tmdb_tv_button.setEnabled(True))
+        if task == "tmdb_collection":
+            self.worker.finished.connect(lambda: self.tmdb_collection_button.setEnabled(True))
         self.worker.start()
         self.update_review_actions()
 
