@@ -17,6 +17,14 @@ class UpdateTests(unittest.TestCase):
         result = parse_release({"tag_name": "v2.0.1", "html_url": "https://github.com/oriondd/Bulkrr/releases/tag/v2.0.1"})
         self.assertEqual(result["tag"], "v2.0.1")
 
+    def test_rejects_embedded_credentials_and_query(self):
+        for url in (
+            "https://attacker@github.com/oriondd/Bulkrr/releases/tag/v3.0.0",
+            "https://github.com/oriondd/Bulkrr/releases/tag/v3.0.0?redirect=evil",
+        ):
+            with self.assertRaises(ValueError):
+                parse_release({"tag_name": "v3.0.0", "html_url": url})
+
     def test_rejects_untrusted_release_link(self):
         with self.assertRaises(ValueError):
             parse_release({"tag_name": "v3.0.0", "html_url": "https://github.com.evil.example/oriondd/Bulkrr/releases/tag/v3.0.0"})
