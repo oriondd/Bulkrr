@@ -10,3 +10,17 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6.QtWidgets import QApplication
 
 APP = QApplication.instance() or QApplication([])
+
+# Explicitly shut down Qt before Python unloads PySide6 extension modules.
+# Qt may otherwise destroy its global application after Python wrappers vanish.
+import atexit
+import gc
+
+def _shutdown_qt():
+    APP.closeAllWindows()
+    APP.processEvents()
+    gc.collect()
+    APP.processEvents()
+    APP.quit()
+
+atexit.register(_shutdown_qt)
