@@ -698,6 +698,26 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_negative_import_progress_index_cannot_change_last_title(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "movie: First", "status": "ready",
+                             "matches": [], "selected": -1, "message": "First"},
+                            {"input": "movie: Last", "status": "ready",
+                             "matches": [], "selected": -1, "message": "Last"},
+                        ]
+                        window.active_import_rows = [1]
+                        with patch.object(window, "worker") as worker:
+                            worker.task = "import"
+                            window.row_update(-1, "failed", "Invalid index")
+                        self.assertEqual(window.items[1]["message"], "Last")
+                    finally:
+                        window.close()
+
     def test_partial_analysis_progress_targets_original_review_row(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
