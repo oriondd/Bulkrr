@@ -66,7 +66,7 @@ from bulkrr_library import missing_movies, missing_series, upgrade_movies
 from bulkrr_bulk import plan_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_trending import fetch_trending_anime
-from bulkrr_tmdb import fetch_trending
+from bulkrr_tmdb import fetch_trending, fetch_collection
 from bulkrr_recommendations import rank_candidates
 from bulkrr_genres import favorite_genres
 from bulkrr_settings import write_settings
@@ -163,6 +163,8 @@ class Worker(QThread):
                 self.finished_data.emit(fetch_trending_anime())
             elif self.task == "trending_tmdb":
                 self.finished_data.emit(fetch_trending(self.config["kind"], self.config["access_token"]))
+            elif self.task == "tmdb_collection":
+                self.finished_data.emit(fetch_collection(self.config["collection_id"], self.config["access_token"]))
             elif self.task == "release_calendar":
                 self.finished_data.emit(fetch_schedule())
             elif self.task == "discover":
