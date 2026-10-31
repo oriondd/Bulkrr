@@ -512,6 +512,25 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_partial_category_decisions_preserve_previous_manual_choices(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        prior = {"input": "Existing", "status": "ready", "action": "upgrade",
+                                 "duplicate": {"id": 1}, "matches": [], "message": "User selected upgrade"}
+                        new = {"input": "New", "status": "duplicate", "action": "review",
+                               "duplicate": {"id": 2}, "matches": [], "message": "Detected"}
+                        window.items = [prior, new]
+                        window.apply_category_decisions([new])
+                        self.assertEqual(prior["action"], "upgrade")
+                        self.assertEqual(prior["status"], "ready")
+                        self.assertEqual(new["status"], "skipped")
+                        self.assertEqual(new["action"], "skip")
+                    finally:
+                        window.close()
+
     def test_restoring_exclusion_requires_review_again(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
