@@ -67,7 +67,7 @@ from bulkrr_library import missing_movies, missing_series, upgrade_movies
 from bulkrr_bulk import plan_searches, plan_episode_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_trending import fetch_trending_anime
-from bulkrr_tmdb import fetch_trending, fetch_collection, search_collections
+from bulkrr_tmdb import fetch_trending, fetch_new_releases, fetch_collection, search_collections
 from bulkrr_recommendations import rank_candidates
 from bulkrr_genres import favorite_genres
 from bulkrr_settings import write_settings
@@ -169,6 +169,10 @@ class Worker(QThread):
                 self.finished_data.emit(fetch_trending_anime())
             elif self.task == "trending_tmdb":
                 self.finished_data.emit(fetch_trending(self.config["kind"], self.config["access_token"], window=self.config.get("window", "week")))
+            elif self.task == "new_releases_tmdb":
+                self.finished_data.emit(fetch_new_releases(
+                    self.config["kind"], self.config["access_token"]
+                ))
             elif self.task == "tmdb_collection":
                 self.finished_data.emit(fetch_collection(self.config["collection_id"], self.config["access_token"]))
             elif self.task == "tmdb_collection_search":
@@ -1314,6 +1318,7 @@ class Main(QMainWindow):
         self.discover_category.addItems([
             "Trending movies", "Trending TV", "Trending anime",
             "Trending today (movies)", "Trending today (TV)",
+            "New releases (movies)", "New releases (TV)",
         ])
         self.discover_category.setMinimumWidth(205)
         browse_btn = QPushButton("Browse")
@@ -1654,6 +1659,32 @@ class Main(QMainWindow):
             self.load_tmdb_trending("movie", window="day")
         elif category == "Trending today (TV)":
             self.load_tmdb_trending("tv", window="day")
+        elif category == "New releases (movies)":
+            self.load_tmdb_new_releases("movie")
+        elif category == "New releases (TV)":
+            self.load_tmdb_new_releases("tv")
+
+    def load_tmdb_new_releases(self, kind):
+        if self.worker and self.worker.isRunning():
+            return
+        access_token, accepted = QInputDialog.getText(
+            self, "TMDB new releases",
+            "Enter your TMDB API read access token (not saved):",
+            QLineEdit.EchoMode.Password,
+        )
+        if not accepted or not access_token.strip():
+            return
+        self.run_worker(
+            "new_releases_tmdb",
+            config={"kind": kind, "access_token": access_token.strip()},
+            done=self.tmdb_new_releases_loaded,
+        )
+
+    def tmdb_new_releases_loaded(self, records):
+        self.discovered(records)
+        self.logmsg(
+            f"Loaded {len(records)} recently released titles from TMDB (last 45 days)"
+        )
 
     def load_tmdb_trending(self, kind, window="week"):
         if self.worker and self.worker.isRunning():
