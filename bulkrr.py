@@ -70,7 +70,7 @@ from bulkrr_tmdb import fetch_trending, fetch_collection, search_collections
 from bulkrr_recommendations import rank_candidates
 from bulkrr_genres import favorite_genres
 from bulkrr_settings import write_settings
-from bulkrr_servers import validate_profiles, legacy_profiles, route_to_profiles
+from bulkrr_servers import validate_profiles, legacy_profiles, route_to_profiles, check_routed_libraries
 from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
 from bulkrr_calendar import fetch_schedule
@@ -188,6 +188,17 @@ class Worker(QThread):
                         except Exception as exc:
                             result["errors"].append(f"{app.title()}: {exc}")
                 self.finished_data.emit(result)
+            elif self.task == "routed_library_check":
+                routes = self.config.get("routes", [])
+                credentials = self.config.get("credentials", {})
+                def fetch_profile_library(profile):
+                    key = credentials.get(profile["id"])
+                    if not isinstance(key, str) or not key:
+                        raise ValueError("Missing API key for selected profile")
+                    endpoint = "movie" if profile["kind"] == "radarr" else "series"
+                    self.progress.emit(f"Checking {profile['label']} ({profile['kind']}) library")
+                    return get_json(profile["url"], key, endpoint)
+                self.finished_data.emit(check_routed_libraries(routes, fetch_profile_library))
             elif self.task == "episode_upgrade_search":
                 ids = self.config.get("episode_ids", [])
                 if "sonarr" not in self.connections or not isinstance(ids, list) or not ids or len(ids) > 500 or any(type(i) is not int or i <= 0 for i in ids):
@@ -791,6 +802,9 @@ class Main(QMainWindow):
         route_preview = QPushButton("Preview routing of selected review titles")
         route_preview.clicked.connect(self.preview_extra_routing)
         extra_buttons.addWidget(route_preview)
+        check_routes = QPushButton("Check selected destination library")
+        check_routes.clicked.connect(self.check_extra_routing)
+        extra_buttons.addWidget(check_routes)
         extra_row.addLayout(extra_buttons)
         self.setup_layout.addWidget(QLabel("Additional Sonarr / Radarr instances"))
         self.setup_layout.addLayout(extra_row)
@@ -1636,6 +1650,59 @@ class Main(QMainWindow):
             f"at {profile['url']}. No server requests or imports have been made. "
             "To use this destination now, activate the profile and reconnect; simultaneous routing is not yet enabled.",
         )
+
+    def check_extra_routing(self):
+        """Read-only inventory check for selected reviewed titles and destination."""
+        if self.worker and self.worker.isRunning():
+            return
+        profile_row = self.extra_list.currentRow()
+        if profile_row < 0 or profile_row >= len(self.extra_profiles):
+            QMessageBox.information(self, "Select destination", "Select an additional server profile.")
+            return
+        profile = self.extra_profiles[profile_row]
+        selection = self.table.selectionModel()
+        rows = sorted({index.row() for index in selection.selectedRows()}) if selection else []
+        assignments = []
+        for row in rows:
+            if row >= len(self.items):
+                continue
+            item = self.items[row]
+            matches = item.get("matches") or []
+            index = item.get("selected", -1)
+            if type(index) is not int or index < 0 or index >= len(matches):
+                QMessageBox.warning(self, "Review required", "Select titles with reviewed metadata matches.")
+                return
+            match = matches[index]
+            if not isinstance(match, dict) or match.get("app") != profile["kind"]:
+                QMessageBox.warning(self, "Server mismatch", "Selected title type must match the destination.")
+                return
+            assignments.append({"item_id": row + 1, "kind": profile["kind"], "profile_id": profile["id"]})
+        if not assignments:
+            QMessageBox.information(self, "Select titles", "Select review-table titles first.")
+            return
+        try:
+            routes = route_to_profiles(self.extra_profiles, assignments)
+            import keyring
+            secret = keyring.get_password("Bulkrr", "profile:" + profile["id"])
+        except (ValueError, Exception) as exc:
+            QMessageBox.warning(self, "Cannot check destination", str(exc))
+            return
+        if not secret:
+            QMessageBox.warning(self, "Missing API key", "Destination API key is unavailable in the keyring.")
+            return
+        self.run_worker("routed_library_check",
+                        config={"routes": routes, "credentials": {profile["id"]: secret}},
+                        done=self.routed_library_checked)
+
+    def routed_library_checked(self, results):
+        messages = []
+        for result in results:
+            if result["error"]:
+                messages.append(f"{result['profile_id']}: {result['error']}")
+            else:
+                messages.append(f"{result['profile_id']}: {result['library_count']} existing library records")
+        QMessageBox.information(self, "Read-only destination checks",
+                                "\\n".join(messages) + "\\nNo imports or searches were requested.")
 
     def activate_extra_server(self):
         row = self.extra_list.currentRow()
