@@ -15,7 +15,7 @@ class FakeResponse:
     def __exit__(self, *args):
         return False
 
-    def read(self):
+    def read(self, limit=-1):
         return b'{"ok": true}'
 
 
@@ -40,6 +40,18 @@ class ApiTests(unittest.TestCase):
             get_json("http://localhost:7878", "secret", "movie"), {"ok": True}
         )
         self.assertEqual(open_url.call_count, 2)
+
+    @patch("bulkrr_api.urllib.request.urlopen")
+    def test_oversized_response_rejected(self, open_url):
+        class Oversized(FakeResponse):
+            def read(self, limit=-1):
+                self.requested_limit = limit
+                return b"x" * limit
+        response = Oversized()
+        open_url.return_value = response
+        with self.assertRaisesRegex(ValueError, "exceeds 8 MiB"):
+            get_json("http://localhost:7878", "secret", "movie")
+        self.assertEqual(response.requested_limit, 8 * 1024 * 1024 + 1)
 
     @patch("bulkrr_api.urllib.request.urlopen")
     def test_post_is_never_retried(self, open_url):
