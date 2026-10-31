@@ -1,5 +1,6 @@
 """Headless GUI construction smoke tests for the unified 2.0 screens."""
 import os
+import gc
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,6 +16,14 @@ class MainWindowSmokeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+
+    @classmethod
+    def tearDownClass(cls):
+        # Destroy native Qt objects while QApplication is still alive.
+        cls.app.closeAllWindows()
+        cls.app.processEvents()
+        gc.collect()
+        cls.app.processEvents()
 
     def test_library_rows_separate_missing_and_upgrade_actions(self):
         with tempfile.TemporaryDirectory() as folder:
