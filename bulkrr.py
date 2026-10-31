@@ -474,7 +474,12 @@ class Worker(QThread):
                     endpoint = "movie" if app == "radarr" else "series"
                     try:
                         if app not in existing_by_app:
-                            existing_by_app[app] = self.call(app, endpoint)
+                            library = self.call(app, endpoint)
+                            if not isinstance(library, list):
+                                raise ValueError(
+                                    f"{app.title()} returned an invalid library listing"
+                                )
+                            existing_by_app[app] = library
                         existing = existing_by_app[app]
                     except Exception as exc:
                         results.append((item["input"], "red", f"Library check failed: {exc}"))
