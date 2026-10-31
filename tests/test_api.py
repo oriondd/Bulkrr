@@ -49,9 +49,9 @@ class ApiTests(unittest.TestCase):
                 return b"x" * limit
         response = Oversized()
         open_url.return_value = response
-        with self.assertRaisesRegex(ValueError, "exceeds 8 MiB"):
+        with self.assertRaisesRegex(ValueError, "exceeds 32 MiB"):
             get_json("http://localhost:7878", "secret", "movie")
-        self.assertEqual(response.requested_limit, 8 * 1024 * 1024 + 1)
+        self.assertEqual(response.requested_limit, 32 * 1024 * 1024 + 1)
 
     @patch("bulkrr_api.urllib.request.urlopen")
     def test_post_is_never_retried(self, open_url):
