@@ -1254,6 +1254,10 @@ class Main(QMainWindow):
         self.server_data = {}
         self.items = []
         self.library_entries = []
+        self.settings.pop("movie_folder", None)
+        self.settings.pop("tv_folder", None)
+        self.settings.pop("radarr_profile", None)
+        self.settings.pop("sonarr_profile", None)
         self.refresh()
         self.url[app].setText(profile["url"])
         self.key[app].setText(secret)
@@ -1274,6 +1278,9 @@ class Main(QMainWindow):
         self.persist_extra_profiles()
 
     def connect_servers(self):
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the active operation before reconnecting.")
+            return
         self.connections = {}
         self.server_data = {}
         self.items = []
