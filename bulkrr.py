@@ -1447,13 +1447,40 @@ class Main(QMainWindow):
         tabs.addTab(self.log, "Activity log")
         dashboard = QWidget()
         dashboard_layout = QVBoxLayout(dashboard)
-        dashboard_layout.setSpacing(18)
-        welcome = QLabel("Your media. One workspace.")
+        dashboard_layout.setSpacing(12)
+        dashboard_layout.setContentsMargins(18, 18, 18, 18)
+        hero = QWidget()
+        hero.setObjectName("dashboardCinematicHero")
+        hero_layout = QVBoxLayout(hero)
+        hero_layout.setContentsMargins(28, 22, 28, 24)
+        hero_layout.setSpacing(10)
+        eyebrow = QLabel("✦  BULKRR  /  YOUR MEDIA UNIVERSE")
+        eyebrow.setObjectName("dashboardEyebrow")
+        hero_layout.addWidget(eyebrow)
+        welcome = QLabel("Your next obsession starts here.")
         welcome.setObjectName("dashboardHero")
-        dashboard_layout.addWidget(welcome)
-        dashboard_layout.addWidget(QLabel(
-            "Discover titles, review matches, and manage your Radarr / Sonarr library."
-        ))
+        welcome.setWordWrap(True)
+        hero_layout.addWidget(welcome)
+        hero_caption = QLabel(
+            "Discover cinematic stories, curate your watchlist, and bring everything into one collection."
+        )
+        hero_caption.setObjectName("dashboardHeroCaption")
+        hero_caption.setWordWrap(True)
+        hero_layout.addWidget(hero_caption)
+        hero_actions = QHBoxLayout()
+        for title, destination, primary in (
+            ("✦  Explore Discover", 4, True),
+            ("＋  Import titles", 2, False),
+        ):
+            action = QPushButton(title)
+            action.setMinimumHeight(44)
+            if not primary:
+                action.setObjectName("secondaryAction")
+            action.clicked.connect(lambda checked=False, page=destination: tabs.setCurrentIndex(page))
+            hero_actions.addWidget(action)
+        hero_actions.addStretch()
+        hero_layout.addLayout(hero_actions)
+        dashboard_layout.addWidget(hero)
         dashboard_status = QGroupBox("Connected services")
         status_layout = QHBoxLayout(dashboard_status)
         self.dashboard_radarr = QLabel("●  Radarr  ·  Not connected")
@@ -1461,7 +1488,9 @@ class Main(QMainWindow):
         status_layout.addWidget(self.dashboard_radarr)
         status_layout.addWidget(self.dashboard_sonarr)
         dashboard_layout.addWidget(dashboard_status)
-        dashboard_layout.addWidget(QLabel("Library overview"))
+        overview_heading = QLabel("Your library at a glance")
+        overview_heading.setObjectName("dashboardSectionTitle")
+        dashboard_layout.addWidget(overview_heading)
         overview_row = QHBoxLayout()
         for heading, attr in (
             ("Movies missing", "dashboard_missing_movies"),
@@ -1482,7 +1511,7 @@ class Main(QMainWindow):
         self.dashboard_scan.setObjectName("secondaryAction")
         self.dashboard_scan.clicked.connect(self.scan_library)
         dashboard_layout.addWidget(self.dashboard_scan)
-        dashboard_layout.addWidget(QLabel("Start exploring"))
+        dashboard_layout.addWidget(QLabel("QUICK ACCESS"))
         quick_actions = QHBoxLayout()
         for title, destination in (
             ("Discover movies, TV & anime", 4),
@@ -1494,11 +1523,15 @@ class Main(QMainWindow):
             button.clicked.connect(lambda checked=False, page=destination: tabs.setCurrentIndex(page))
             quick_actions.addWidget(button)
         dashboard_layout.addLayout(quick_actions)
-        dashboard_layout.addWidget(QLabel("Recent activity"))
+        activity_heading = QLabel("Recent activity")
+        activity_heading.setObjectName("dashboardSectionTitle")
+        dashboard_layout.addWidget(activity_heading)
         self.dashboard_activity = QLabel("Your latest imports and searches will appear in Activity Log.")
         self.dashboard_activity.setWordWrap(True)
         dashboard_layout.addWidget(self.dashboard_activity)
-        dashboard_layout.addWidget(QLabel("Discover highlights"))
+        highlights_heading = QLabel("✦  Discover highlights")
+        highlights_heading.setObjectName("dashboardSectionTitle")
+        dashboard_layout.addWidget(highlights_heading)
         self.dashboard_discover_note = QLabel("Explore trending movies, TV, and anime to populate this section.")
         self.dashboard_discover_note.setWordWrap(True)
         dashboard_layout.addWidget(self.dashboard_discover_note)
@@ -1510,8 +1543,8 @@ class Main(QMainWindow):
         self.dashboard_featured.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.dashboard_featured.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.dashboard_featured.setIconSize(QSize(90, 128))
-        self.dashboard_featured.setGridSize(QSize(130, 174))
-        self.dashboard_featured.setFixedHeight(205)
+        self.dashboard_featured.setGridSize(QSize(132, 182))
+        self.dashboard_featured.setFixedHeight(208)
         self.dashboard_featured.itemDoubleClicked.connect(
             lambda item: tabs.setCurrentIndex(4)
         )
