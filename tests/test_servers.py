@@ -32,6 +32,40 @@ class ServerProfileTests(unittest.TestCase):
         profiles = public_profiles([{"id": "one", "kind": "radarr", "url": "http://host", "key": "secret"}])
         self.assertNotIn("key", profiles[0])
 
+    def test_explicit_multi_instance_routing(self):
+        from bulkrr_servers import route_to_profiles
+        profiles = [
+            {"id": "sonarr_a", "kind": "sonarr", "url": "http://host-a:8989"},
+            {"id": "sonarr_b", "kind": "sonarr", "url": "http://host-b:8989"},
+            {"id": "radarr_a", "kind": "radarr", "url": "http://host-c:7878"},
+        ]
+        assignments = [
+            {"item_id": 1, "kind": "sonarr", "profile_id": "sonarr_b"},
+            {"item_id": 2, "kind": "radarr", "profile_id": "radarr_a"},
+            {"item_id": 3, "kind": "sonarr", "profile_id": "sonarr_a"},
+            {"item_id": 4, "kind": "sonarr", "profile_id": "sonarr_b"},
+        ]
+        result = route_to_profiles(profiles, assignments)
+        self.assertEqual([(r["profile"]["id"], r["item_ids"]) for r in result],
+                         [("sonarr_b", [1, 4]), ("radarr_a", [2]), ("sonarr_a", [3])])
+        self.assertNotIn("key", result[0]["profile"])
+
+    def test_multi_instance_routing_rejects_unsafe_or_ambiguous_targets(self):
+        from bulkrr_servers import route_to_profiles
+        profiles = [{"id": "sonarr_a", "kind": "sonarr", "url": "http://host:8989"}]
+        valid = {"item_id": 1, "kind": "sonarr", "profile_id": "sonarr_a"}
+        invalid = [
+            [{**valid, "profile_id": "missing"}],
+            [{**valid, "kind": "radarr"}],
+            [{**valid, "item_id": True}],
+            [valid, valid],
+            [{**valid, "profile_id": None}],
+            [valid] * 501,
+        ]
+        for assignments in invalid:
+            with self.subTest(assignments=str(assignments[:1])), self.assertRaises(ValueError):
+                route_to_profiles(profiles, assignments)
+
 
 if __name__ == "__main__":
     unittest.main()
