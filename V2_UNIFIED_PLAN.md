@@ -37,8 +37,9 @@ This branch combines Phase 3 (library management), Phase 4 (discovery), and Phas
 ## Remaining limitations before release
 
 - Sonarr episode-level quality upgrade identification is not yet implemented.
-- TMDB trending movie/TV provider and tests are implemented, but its UI
-  connection is not yet integrated; the read access token must remain private.
+- TMDB trending movie/TV requires an API read access token entered at each
+  use; the token is never saved in settings. External requests still need
+  Windows acceptance verification.
 - Local recommendations use only genre frequencies in connected library
   metadata; viewing history and playback activity are not collected.
 - Franchise matching is title-based, not authoritative TMDB collection lookup.
