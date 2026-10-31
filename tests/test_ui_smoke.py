@@ -485,6 +485,33 @@ class MainWindowSmokeTests(unittest.TestCase):
         self.assertEqual(results[0][0]["status"], "added")
         self.assertTrue(api.call_args.args[4]["addOptions"]["searchForMissingEpisodes"])
 
+    def test_resume_merges_only_unfinished_titles(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        complete = {"input": "Finished", "matches": [],
+                                    "selected": -1, "status": "skipped",
+                                    "action": "skip", "message": "User excluded"}
+                        pending = {"input": "Pending", "matches": [],
+                                   "selected": -1, "status": "skipped",
+                                   "action": "skip",
+                                   "message": "Analysis stopped before lookup"}
+                        window.items = [complete, pending]
+                        window._resume_previous_items = list(window.items)
+                        result = {"input": "Pending", "matches": [],
+                                  "selected": -1, "status": "error",
+                                  "message": "No matching title found"}
+                        window.resumed_analysis([result])
+                        self.assertIs(window.items[0], complete)
+                        self.assertEqual(window.items[1]["input"], "Pending")
+                        self.assertEqual(window.items[1]["status"], "skipped")
+                        self.assertEqual(window.items[1]["message"],
+                                         "No reliable metadata match — excluded from import")
+                    finally:
+                        window.close()
+
     def test_selected_row_exclusion_is_preview_only(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
