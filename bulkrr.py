@@ -1074,6 +1074,32 @@ class Main(QMainWindow):
         self.discover_button.setEnabled(False)
         self.run_worker("discover", config={"kind": self.discover_kind.currentText(), "term": term}, done=self.discovered)
 
+    def load_tmdb_collection(self):
+        if self.worker and self.worker.isRunning():
+            return
+        collection_id, accepted = QInputDialog.getInt(
+            self, "TMDB collection", "Enter the numeric TMDB collection ID:",
+            1, 1, 2_147_483_647,
+        )
+        if not accepted:
+            return
+        access_token, accepted = QInputDialog.getText(
+            self, "TMDB collection", "Enter your TMDB API read access token (not saved):",
+            QLineEdit.EchoMode.Password,
+        )
+        if not accepted or not access_token.strip():
+            return
+        self.tmdb_collection_button.setEnabled(False)
+        self.run_worker(
+            "tmdb_collection",
+            config={"collection_id": collection_id, "access_token": access_token.strip()},
+            done=self.tmdb_collection_loaded,
+        )
+
+    def tmdb_collection_loaded(self, records):
+        self.discovered(records)
+        self.logmsg(f"Loaded {len(records)} verified TMDB collection movies for manual review")
+
     def load_tmdb_trending(self, kind):
         if self.worker and self.worker.isRunning():
             return
