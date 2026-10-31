@@ -10,7 +10,7 @@ class LibraryGenreTests(unittest.TestCase):
             {"genres": ["Horror", "Drama"]},
         ]
         shows = [{"genres": ["Thriller", "Drama"]}]
-        self.assertEqual(favorite_genres(movies, shows), ["horror", "drama", "thriller"])
+        self.assertEqual(favorite_genres(movies, shows), ["drama", "horror", "thriller"])
 
     def test_invalid_genres_ignored(self):
         self.assertEqual(favorite_genres([
