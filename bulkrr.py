@@ -1320,7 +1320,32 @@ class Main(QMainWindow):
         discover_layout.addWidget(advanced_panel)
 
         discover_layout.addWidget(QLabel("Results — select one or more titles to queue"))
-        discover_layout.addWidget(self.discover_results, 1)
+        catalog_row = QHBoxLayout()
+        catalog_row.addWidget(self.discover_results, 3)
+        detail_panel = QGroupBox("Media details")
+        detail_panel.setMinimumWidth(265)
+        detail_panel.setMaximumWidth(360)
+        detail_layout = QVBoxLayout(detail_panel)
+        self.discover_detail_poster = QLabel("Select a title")
+        self.discover_detail_poster.setObjectName("detailPoster")
+        self.discover_detail_poster.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.discover_detail_poster.setFixedSize(172, 242)
+        detail_layout.addWidget(self.discover_detail_poster, 0, Qt.AlignmentFlag.AlignHCenter)
+        self.discover_detail_title = QLabel("Choose a poster to explore")
+        self.discover_detail_title.setObjectName("detailTitle")
+        self.discover_detail_title.setWordWrap(True)
+        detail_layout.addWidget(self.discover_detail_title)
+        self.discover_detail_meta = QLabel("Movie · TV · Anime")
+        self.discover_detail_meta.setWordWrap(True)
+        detail_layout.addWidget(self.discover_detail_meta)
+        self.discover_detail_overview = QLabel("Metadata, genres, and synopsis will appear here.")
+        self.discover_detail_overview.setWordWrap(True)
+        self.discover_detail_overview.setAlignment(Qt.AlignmentFlag.AlignTop)
+        detail_layout.addWidget(self.discover_detail_overview)
+        detail_layout.addStretch()
+        self.discover_results.currentRowChanged.connect(self.show_discovery_details)
+        catalog_row.addWidget(detail_panel, 1)
+        discover_layout.addLayout(catalog_row, 1)
         discover_layout.addWidget(self.discover_add)
         calendar_panel = QGroupBox("TV release calendar")
         calendar_panel.setCheckable(True)
@@ -1604,6 +1629,44 @@ class Main(QMainWindow):
                 Qt.TransformationMode.SmoothTransformation,
             )))
 
+
+    def show_discovery_details(self, row):
+        records = getattr(self, "discover_records", [])
+        if not 0 <= row < len(records):
+            self.discover_detail_title.setText("Choose a poster to explore")
+            self.discover_detail_meta.setText("Movie · TV · Anime")
+            self.discover_detail_overview.setText("Metadata, genres, and synopsis will appear here.")
+            self.discover_detail_poster.setPixmap(QPixmap())
+            self.discover_detail_poster.setText("Select a title")
+            return
+        entry = records[row]
+        self.discover_detail_title.setText(entry.get("title", "Unknown title"))
+        self.discover_detail_meta.setText(
+            f"{entry.get('year') or 'Year unknown'}  ·  {entry.get('type', 'media').upper()}\\n"
+            + "  ·  ".join(entry.get("genres") or [])
+        )
+        overview = str(entry.get("overview") or "No synopsis available.").strip()
+        self.discover_detail_overview.setText(overview[:750] + ("…" if len(overview) > 750 else ""))
+        url = entry.get("poster_url")
+        self.discover_detail_poster.setPixmap(QPixmap())
+        self.discover_detail_poster.setText("Artwork unavailable")
+        if isinstance(url, str) and url.startswith(("https://image.tmdb.org/t/p/", "https://s4.anilist.co/", "https://s3.anilist.co/")):
+            self.fetch_poster_url(url, self.discover_detail_poster)
+
+    def fetch_poster_url(self, url, target):
+        target.setProperty("poster_url", url)
+        if url in self.poster_cache:
+            self.display_poster(target, url, self.poster_cache[url])
+            return
+        if url in self.poster_inflight:
+            self.poster_inflight[url].append(target)
+            return
+        self.poster_inflight[url] = [target]
+        worker = PosterWorker(url)
+        self.poster_workers.append(worker)
+        worker.loaded.connect(self.poster_loaded)
+        worker.finished.connect(lambda: self.poster_worker_finished(worker))
+        worker.start()
 
     def rank_discovery(self):
         records = getattr(self, "discover_source_records", [])
