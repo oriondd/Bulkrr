@@ -938,6 +938,9 @@ class Main(QMainWindow):
         recommend_btn = QPushButton("Rank current results by my interests")
         recommend_btn.clicked.connect(self.rank_discovery)
         discover_layout.addWidget(recommend_btn)
+        self.library_recommend_btn = QPushButton("Rank results using genres in my library")
+        self.library_recommend_btn.clicked.connect(self.rank_from_library)
+        discover_layout.addWidget(self.library_recommend_btn)
         self.discover_results = QListWidget()
         self.discover_results.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         discover_layout.addWidget(self.discover_results)
@@ -980,6 +983,7 @@ class Main(QMainWindow):
         rows += [("Sonarr", s, str(s["missing"])) for s in data["series"]]
         rows += [("Radarr", m, "—") for m in data.get("upgrades", [])]
         self.library_entries = rows
+        self.library_genres = data.get("genres", [])
         self.library_counts = (len(data["movies"]), sum(show["missing"] for show in data["series"]))
         if data.get("errors"):
             QMessageBox.warning(self, "Incomplete library scan", "\n".join(data["errors"]))
@@ -1085,6 +1089,30 @@ class Main(QMainWindow):
         finally:
             self._ranking_discovery = False
         self.logmsg(f"Locally ranked {len(ranked)} discovery candidates by entered interests")
+
+    def rank_from_library(self):
+        records = getattr(self, "discover_source_records", [])
+        genres = getattr(self, "library_genres", [])
+        if not records:
+            QMessageBox.information(self, "No discovery results", "Discover titles or load trending anime first.")
+            return
+        if not genres:
+            QMessageBox.information(self, "No library preferences", "Scan a connected library with genre metadata first.")
+            return
+        try:
+            ranked = rank_candidates(records, preferred_genres=genres)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Recommendation unavailable", str(exc))
+            return
+        if not ranked:
+            QMessageBox.information(self, "No matching suggestions", "No current discovery results match the most common genres in your library.")
+            return
+        self._ranking_discovery = True
+        try:
+            self.discovered(ranked)
+        finally:
+            self._ranking_discovery = False
+        self.logmsg(f"Locally ranked {len(ranked)} discovery titles using library genre metadata")
 
     def queue_discovered(self):
         records = getattr(self, "discover_records", [])
