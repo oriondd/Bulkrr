@@ -36,7 +36,7 @@ class MissingInventoryTests(unittest.TestCase):
             {"id": 3, "title": "Unknown", "hasFile": True, "movieFile": {}},
             {"id": 4, "title": "Missing", "hasFile": False,
              "movieFile": {"qualityCutoffNotMet": True}},
-            {"id": 5, "title": "Invalid", "hasFile": True,
+            {"id": True, "title": "Invalid", "hasFile": True,
              "movieFile": {"qualityCutoffNotMet": True}},
             {"id": 6, "title": "Bad file", "hasFile": True, "movieFile": "bad"},
         ]
