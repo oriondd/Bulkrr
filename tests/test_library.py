@@ -45,6 +45,15 @@ class MissingInventoryTests(unittest.TestCase):
             "monitored": True, "status": "upgrade",
         }])
 
+    def test_malformed_episode_statistics_are_not_reported_as_missing(self):
+        series = [
+            {"id": 1, "title": "Negative", "statistics": {"totalEpisodeCount": 10, "episodeFileCount": -1}},
+            {"id": 2, "title": "Overflow", "statistics": {"totalEpisodeCount": 10, "episodeFileCount": 12}},
+            {"id": 3, "title": "Boolean", "statistics": {"totalEpisodeCount": True, "episodeFileCount": 0}},
+            {"id": 4, "title": "Valid", "statistics": {"totalEpisodeCount": 10, "episodeFileCount": 7}},
+        ]
+        self.assertEqual([item["id"] for item in missing_series(series)], [4])
+
     def test_counts_never_negative(self):
         self.assertEqual(missing_series([{
             "id": 8, "title": "Extra", "statistics": {"totalEpisodeCount": 4, "episodeFileCount": 5}
