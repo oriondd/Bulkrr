@@ -63,7 +63,7 @@ from bulkrr_imports import normalize_titles, read_source, save_session, load_ses
 from bulkrr_review import review_summary, STATUS_LABELS, match_confidence
 from bulkrr_theme import DARK_THEME
 from bulkrr_library import missing_movies, missing_series, upgrade_movies
-from bulkrr_bulk import plan_searches, estimate_storage
+from bulkrr_bulk import plan_searches, plan_episode_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_trending import fetch_trending_anime
 from bulkrr_tmdb import fetch_trending, fetch_collection, search_collections
@@ -188,6 +188,27 @@ class Worker(QThread):
                         except Exception as exc:
                             result["errors"].append(f"{app.title()}: {exc}")
                 self.finished_data.emit(result)
+            elif self.task == "episode_upgrade_search":
+                ids = self.config.get("episode_ids", [])
+                if "sonarr" not in self.connections or not isinstance(ids, list) or not ids or len(ids) > 500 or any(type(i) is not int or i <= 0 for i in ids):
+                    raise ValueError("Invalid Sonarr episode search request")
+                self.call("sonarr", "command", "POST", {"name": "EpisodeSearch", "episodeIds": ids})
+                self.finished_data.emit({"queued": 1, "errors": []})
+            elif self.task == "episode_upgrade_preview":
+                if "sonarr" not in self.connections:
+                    raise ValueError("Connect to Sonarr first")
+                ids = self.config.get("series_ids", [])
+                if not isinstance(ids, list) or not ids or len(ids) > 100 or any(type(i) is not int or i <= 0 for i in ids):
+                    raise ValueError("Select 1–100 valid Sonarr series")
+                episodes = []
+                for series_id in dict.fromkeys(ids):
+                    records = self.call("sonarr", f"episode?seriesId={series_id}&includeEpisodeFile=true")
+                    if not isinstance(records, list):
+                        raise ValueError("Sonarr returned invalid episode data")
+                    episodes.extend(records)
+                    if len(episodes) > 5000:
+                        raise ValueError("Preview limited to 5000 episodes")
+                self.finished_data.emit(plan_episode_searches(episodes))
             elif self.task == "library_scan":
                 result = {"movies": [], "series": [], "upgrades": [], "genres": [], "errors": []}
                 library_movies = []
@@ -903,6 +924,9 @@ class Main(QMainWindow):
         self.library_upgrade_btn = QPushButton("Search selected Radarr quality upgrades")
         self.library_upgrade_btn.clicked.connect(self.search_upgrades)
         library_layout.addWidget(self.library_upgrade_btn)
+        self.sonarr_upgrade_btn = QPushButton("Preview selected Sonarr episode upgrades")
+        self.sonarr_upgrade_btn.clicked.connect(self.preview_episode_upgrades)
+        library_layout.addWidget(self.sonarr_upgrade_btn)
         library_layout.addWidget(self.library_scan_btn)
         self.library_summary = QLabel("Connect to Radarr/Sonarr, then scan.")
         sizes = QHBoxLayout()
@@ -1309,6 +1333,43 @@ class Main(QMainWindow):
         )
         if answer == QMessageBox.StandardButton.Yes:
             self.run_worker("bulk_search", config=selected, done=self.bulk_search_done)
+
+    def preview_episode_upgrades(self):
+        if self.worker and self.worker.isRunning():
+            return
+        ids = []
+        for index in self.library_layout_table.selectionModel().selectedRows():
+            row = index.row()
+            if row >= len(getattr(self, "library_entries", [])):
+                continue
+            app, entry, _ = self.library_entries[row]
+            if (app == "Sonarr" and entry.get("monitored")
+                    and type(entry.get("id")) is int and entry["id"] > 0):
+                ids.append(entry["id"])
+        ids = list(dict.fromkeys(ids))
+        if not ids or len(ids) > 100:
+            QMessageBox.information(self, "Selection required",
+                                    "Select 1–100 monitored Sonarr series rows.")
+            return
+        self.run_worker("episode_upgrade_preview", config={"series_ids": ids},
+                        done=self.episode_upgrades_previewed)
+
+    def episode_upgrades_previewed(self, commands):
+        ids = commands[0]["episodeIds"] if commands else []
+        if not ids:
+            QMessageBox.information(self, "Sonarr episode upgrades",
+                                    "No episodes explicitly below their quality cutoff were found.")
+            return
+        answer = QMessageBox.question(
+            self, "Confirm Sonarr episode upgrade searches",
+            f"Search {len(ids)} monitored, aired episodes below their quality cutoff? "
+            "Sonarr may download replacements and remove old files according to its settings.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self.run_worker("episode_upgrade_search", config={"episode_ids": ids},
+                            done=self.bulk_search_done)
 
     def search_upgrades(self):
         if self.worker and self.worker.isRunning():
