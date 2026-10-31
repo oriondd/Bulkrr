@@ -5,6 +5,7 @@ This module does not install updates or execute downloaded code.
 import json
 import re
 import urllib.request
+import urllib.error
 from urllib.parse import urlparse
 
 
@@ -53,8 +54,14 @@ def parse_release(payload):
 
 def fetch_latest_release(timeout=8):
     request = urllib.request.Request(RELEASES_API, headers={"Accept": "application/vnd.github+json", "User-Agent": "Bulkrr/2.0"})
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        data = response.read(200_001)
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            data = response.read(200_001)
+    except urllib.error.HTTPError as exc:
+        # GitHub returns 404 when a repository has no published releases yet.
+        if exc.code == 404:
+            return None
+        raise
         if len(data) > 200_000:
             raise ValueError("Release response too large")
     return parse_release(json.loads(data))
