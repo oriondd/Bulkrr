@@ -35,6 +35,26 @@ class ImportLibraryCacheTests(unittest.TestCase):
         worker.run()
         return calls, output
 
+    def test_invalid_profile_does_not_abort_entire_batch(self):
+        worker = bulkrr.Worker(
+            "import", {"radarr": {"url": "http://example.invalid", "key": "test"}},
+            items=[approved("First", 101), approved("Second", 102)],
+            config={"movie_folder": "/movies", "radarr_profile": "not-a-number",
+                    "search": False, "dry_run": False},
+        )
+        calls = []
+        output = []
+        def fake_call(app, endpoint, method="GET", payload=None):
+            calls.append((app, endpoint, method))
+            return []
+        worker.call = fake_call
+        worker.finished_data.connect(output.append)
+        worker.run()
+        self.assertEqual(len(output[0]), 2)
+        self.assertTrue(all(row[1] == "red" for row in output[0]))
+        self.assertTrue(all("Invalid quality profile" in row[2] for row in output[0]))
+        self.assertEqual(sum(method == "POST" for _, _, method in calls), 0)
+
     def test_malformed_library_entry_fails_without_writing(self):
         worker = bulkrr.Worker(
             "import", {"radarr": {"url": "http://example.invalid", "key": "test"}},
