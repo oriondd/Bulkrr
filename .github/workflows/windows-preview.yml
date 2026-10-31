@@ -30,6 +30,23 @@ jobs:
           if (Test-Path "Bulkrr.png") { $args += @("--add-data", "Bulkrr.png;.") }
           $args += "bulkrr.py"
           python -m PyInstaller @args
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+      - name: Build Windows setup preview
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe"
+          if (-not (Test-Path $compiler)) { throw "Inno Setup compiler missing at $compiler" }
+          & $compiler installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
+      - name: Upload Windows installer preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bulkrr-2.0-Windows-installer-preview
+          path: installer-dist/*.exe
+          if-no-files-found: error
+          retention-days: 14
       - name: Upload Windows test artifact
         uses: actions/upload-artifact@v4
         with:
