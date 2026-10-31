@@ -1,13 +1,40 @@
 """Text formatting helpers for external media metadata."""
 
-import html
-import re
+from html.parser import HTMLParser
+
+
+class _PlainTextParser(HTMLParser):
+    """Convert harmless media description markup into readable plain text."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.hidden_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in {"script", "style"}:
+            self.hidden_depth += 1
+        elif not self.hidden_depth and tag in {"br", "p", "div", "li"}:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag in {"script", "style"} and self.hidden_depth:
+            self.hidden_depth -= 1
+        elif not self.hidden_depth and tag in {"p", "div", "li"}:
+            self.parts.append("\n")
+
+    def handle_data(self, data):
+        if not self.hidden_depth:
+            self.parts.append(data)
 
 
 def clean_media_overview(value):
     """Render TMDB/AniList descriptions as safe, readable plain text."""
-    overview = html.unescape(str(value or "No synopsis available.")).strip()
-    overview = re.sub(r"(?i)<br\s*/?>", "\n", overview)
-    overview = re.sub(r"(?i)</p\s*>", "\n", overview)
-    overview = re.sub(r"<[^>]+>", "", overview)
-    return overview.strip()
+    from html import unescape
+
+    source = unescape(str(value or "No synopsis available.")).strip()
+    parser = _PlainTextParser()
+    parser.feed(source)
+    parser.close()
+    lines = [" ".join(line.split()) for line in "".join(parser.parts).splitlines()]
+    return "\n".join(line for line in lines if line).strip() or "No synopsis available."
