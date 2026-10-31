@@ -1272,6 +1272,9 @@ class Main(QMainWindow):
         self.server_data = {}
         self.items = []
         self.library_entries = []
+        self.library_counts = (0, 0)
+        self.library_layout_table.setRowCount(0)
+        self.library_summary.setText("Reconnect and scan to refresh library inventory")
         for setting in ("movie_folder", "tv_folder", "anime_folder", "radarr_profile", "sonarr_profile"):
             self.settings.pop(setting, None)
         self.refresh()
