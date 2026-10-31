@@ -32,6 +32,9 @@ jobs:
         run: |
           python -m compileall -q bulkrr.py bulkrr_text.py
           python -c "import bulkrr; assert hasattr(bulkrr, 'Main'); print('Bulkrr desktop entrypoint imports successfully')"
+      - name: Smoke-test Windows desktop startup
+        shell: pwsh
+        run: python tests/smoke_desktop.py
       - name: Package Windows preview
         shell: pwsh
         run: |
