@@ -3103,6 +3103,7 @@ class Main(QMainWindow):
             for row in rows
             if 0 <= row < len(self.items)
         }
+        processed = set()
         for name, status, message in results:
             row = pending.get(name)
             if row is None:
@@ -3117,6 +3118,13 @@ class Main(QMainWindow):
                 else ("done" if status == "green" else "failed")
             )
             item["message"] = message
+            processed.add(row)
+        for row in rows:
+            if 0 <= row < len(self.items) and row not in processed:
+                item = self.items[row]
+                if item.get("status") == "working":
+                    item["status"] = "failed"
+                    item["message"] = "No import result received — verify server state before retrying"
         self.active_import_rows = []
         self.refresh()
         self.logmsg(
