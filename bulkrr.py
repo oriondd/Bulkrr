@@ -1011,36 +1011,43 @@ class Main(QMainWindow):
         )
         v.addWidget(QLabel("Drop .txt or .csv files here, or paste titles below."))
         v.addWidget(self.input)
-        source_row = QHBoxLayout()
-        for label, handler in (
+        source_rows = [QHBoxLayout(), QHBoxLayout()]
+        for index, (label, handler) in enumerate((
             ("Import TXT / CSV", self.choose_import_files),
             ("Save title list", self.save_import_session),
             ("Load title list", self.resume_import_session),
             ("Save review snapshot", self.save_review_snapshot),
             ("Load review snapshot", self.load_review_snapshot),
-        ):
+        )):
             button = QPushButton(label)
+            button.setObjectName("secondaryAction")
             button.clicked.connect(handler)
-            source_row.addWidget(button)
-        v.addLayout(source_row)
+            source_rows[0 if index < 3 else 1].addWidget(button)
+        for source_row in source_rows:
+            source_row.addStretch()
+            v.addLayout(source_row)
+        analysis_actions = QHBoxLayout()
         self.analyze_btn = QPushButton("Analyze titles (no changes)")
         self.analyze_btn.clicked.connect(self.analyze)
-        v.addWidget(self.analyze_btn)
+        analysis_actions.addWidget(self.analyze_btn, 2)
         self.stop_analysis_btn = QPushButton("Stop after current title")
         self.stop_analysis_btn.clicked.connect(self.stop_analysis)
         self.stop_analysis_btn.setEnabled(False)
         self.stop_analysis_btn.setObjectName("dangerAction")
-        v.addWidget(self.stop_analysis_btn)
+        analysis_actions.addWidget(self.stop_analysis_btn, 1)
+        v.addLayout(analysis_actions)
+        followup_actions = QHBoxLayout()
         self.resume_analysis_btn = QPushButton("Resume remaining analysis")
         self.resume_analysis_btn.setObjectName("secondaryAction")
         self.resume_analysis_btn.setEnabled(False)
         self.resume_analysis_btn.clicked.connect(self.resume_analysis)
-        v.addWidget(self.resume_analysis_btn)
+        followup_actions.addWidget(self.resume_analysis_btn)
         self.clear_analysis_btn = QPushButton("Clear results and start new list")
         self.clear_analysis_btn.clicked.connect(self.clear_analysis)
         self.clear_analysis_btn.setObjectName("secondaryAction")
         self.clear_analysis_btn.setEnabled(False)
-        v.addWidget(self.clear_analysis_btn)
+        followup_actions.addWidget(self.clear_analysis_btn)
+        v.addLayout(followup_actions)
         self.category_policy_label = QLabel(
             "Batch rules (preview only): existing = skip | unmatched = exclude | "
             "ambiguous = review. Nothing is sent to Radarr/Sonarr until final approval."
