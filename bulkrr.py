@@ -60,7 +60,7 @@ from bulkrr_imports import normalize_titles, read_source, save_session, load_ses
 from bulkrr_review import review_summary, STATUS_LABELS, match_confidence
 from bulkrr_theme import DARK_THEME
 from bulkrr_library import missing_movies, missing_series
-from bulkrr_bulk import plan_searches
+from bulkrr_bulk import plan_searches, estimate_storage
 
 
 class PosterWorker(QThread):
@@ -817,6 +817,21 @@ class Main(QMainWindow):
         library_layout.addWidget(self.library_search_btn)
         library_layout.addWidget(self.library_scan_btn)
         self.library_summary = QLabel("Connect to Radarr/Sonarr, then scan.")
+        sizes = QHBoxLayout()
+        sizes.addWidget(QLabel("Average movie GiB:"))
+        self.movie_size = QLineEdit("4")
+        self.movie_size.setMaximumWidth(70)
+        sizes.addWidget(self.movie_size)
+        sizes.addWidget(QLabel("Average episode GiB:"))
+        self.episode_size = QLineEdit("1")
+        self.episode_size.setMaximumWidth(70)
+        sizes.addWidget(self.episode_size)
+        sizes.addStretch()
+        library_layout.addLayout(sizes)
+        self.storage_estimate = QLabel("Estimated storage: —")
+        library_layout.addWidget(self.storage_estimate)
+        self.movie_size.editingFinished.connect(self.update_storage_estimate)
+        self.episode_size.editingFinished.connect(self.update_storage_estimate)
         self.library_layout_table = QTableWidget(0, 5)
         self.library_layout_table.setHorizontalHeaderLabels(["Server", "Title", "Year", "Missing", "Monitored"])
         self.library_layout_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -849,6 +864,8 @@ class Main(QMainWindow):
         rows = [("Radarr", m, "1") for m in data["movies"]]
         rows += [("Sonarr", s, str(s["missing"])) for s in data["series"]]
         self.library_entries = rows
+        self.library_counts = (len(data["movies"]), sum(show["missing"] for show in data["series"]))
+        self.update_storage_estimate()
         self.library_layout_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.library_layout_table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.library_layout_table.setRowCount(len(rows))
@@ -862,6 +879,18 @@ class Main(QMainWindow):
             summary += " | Errors: " + "; ".join(data["errors"])
         self.library_summary.setText(summary)
         self.logmsg("Library inventory: " + summary)
+
+    def update_storage_estimate(self):
+        try:
+            movie_gib = float(self.movie_size.text())
+            episode_gib = float(self.episode_size.text())
+            if not (0 <= movie_gib <= 10000 and 0 <= episode_gib <= 10000):
+                raise ValueError("Invalid size")
+            movies, episodes = getattr(self, "library_counts", (0, 0))
+            total = estimate_storage(movies, movie_gib) + estimate_storage(episodes, episode_gib)
+            self.storage_estimate.setText(f"Estimated storage: {total:,.1f} GiB (assumption-based)")
+        except ValueError:
+            self.storage_estimate.setText("Enter valid nonnegative sizes")
 
     def search_missing(self):
         if self.worker and self.worker.isRunning():
