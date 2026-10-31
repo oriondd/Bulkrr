@@ -1144,14 +1144,18 @@ class Main(QMainWindow):
         self.edit_title_btn.setObjectName("secondaryAction")
         self.edit_title_btn.clicked.connect(self.edit_selected_title)
         row.addWidget(self.edit_title_btn)
+        row.addStretch()
         self.review_btn = QPushButton("Confirm / change selected match")
         self.review_btn.clicked.connect(self.review)
         self.review_btn.setObjectName("secondaryAction")
         self.add_btn = QPushButton("Approve and import")
         self.add_btn.clicked.connect(self.import_items)
-        row.addWidget(self.review_btn)
-        row.addWidget(self.add_btn)
         v.addLayout(row)
+        approval_row = QHBoxLayout()
+        approval_row.addStretch()
+        approval_row.addWidget(self.review_btn)
+        approval_row.addWidget(self.add_btn)
+        v.addLayout(approval_row)
         tabs.addTab(importer, "2. Import & review")
         library_page = QWidget()
         library_layout = QVBoxLayout(library_page)
@@ -1820,6 +1824,13 @@ class Main(QMainWindow):
         self.run_worker("check_updates", done=self.updates_checked)
 
     def updates_checked(self, release):
+        if release is None:
+            QMessageBox.information(
+                self, "No published release",
+                "Bulkrr has no published GitHub release to compare against yet. "
+                "This development preview can still be used normally."
+            )
+            return
         if update_available("2.0.0-beta", release["tag"]):
             answer = QMessageBox.question(self, "Update available", f"Bulkrr {release['tag']} is available. Open the official GitHub release page?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if answer == QMessageBox.StandardButton.Yes:
