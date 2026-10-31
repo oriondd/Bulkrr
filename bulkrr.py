@@ -3122,7 +3122,10 @@ class Main(QMainWindow):
         invalid_actions = [
             item.get("input", "Unknown title")
             for item in pending
-            if item.get("action", "add") not in ("add", "skip", "upgrade", "replace")
+            if (
+                not isinstance(item.get("action", "add"), str)
+                or item.get("action", "add") not in ("add", "skip", "upgrade", "replace")
+            )
         ]
         if invalid_actions:
             QMessageBox.warning(
