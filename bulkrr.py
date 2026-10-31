@@ -1648,9 +1648,7 @@ class Main(QMainWindow):
         self.dashboard_featured.setGridSize(QSize(132, 182))
         self.dashboard_featured.setFixedHeight(208)
         self.dashboard_featured.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
-        self.dashboard_featured.itemDoubleClicked.connect(
-            lambda item: tabs.setCurrentIndex(4)
-        )
+        self.dashboard_featured.itemDoubleClicked.connect(self.open_dashboard_featured)
         dashboard_layout.addWidget(self.dashboard_featured)
         dashboard_scroll = QScrollArea()
         dashboard_scroll.setObjectName("dashboardScroll")
@@ -1669,6 +1667,18 @@ class Main(QMainWindow):
         self.statusBar().showMessage("Connect to Radarr/Sonarr to begin")
         self.setStyleSheet(DARK_THEME)
         self.update_review_actions()
+
+    def open_dashboard_featured(self, item):
+        """Open the exact highlighted title in Discover, not just its tab."""
+        row = self.dashboard_featured.row(item)
+        if row < 0 or row >= self.discover_results.count():
+            return
+        self.tabs.setCurrentIndex(4)
+        self.discover_results.setCurrentRow(row)
+        self.discover_results.scrollToItem(
+            self.discover_results.item(row),
+            QAbstractItemView.ScrollHint.PositionAtCenter,
+        )
 
     def scan_library(self):
         if self.worker and self.worker.isRunning():
