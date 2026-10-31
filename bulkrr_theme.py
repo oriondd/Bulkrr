@@ -157,4 +157,26 @@ QPushButton {
 QPushButton:hover { background: #8a72f7; border-color: #c1b1ff; }
 QPushButton#secondaryAction { background: #202b47; border: 1px solid #465576; }
 QPushButton#secondaryAction:hover { background: #303c61; }
+
+/* Discover is now content-led rather than a wall of utility controls. */
+QLabel#discoverHero {
+    color: #f9f6ff; font-size: 31px; font-weight: 800;
+    padding: 14px 8px 2px 8px;
+}
+QLabel#discoverIntro {
+    color: #aeb9da; font-size: 13px;
+    padding: 0px 8px 12px 8px;
+}
+QPushButton#secondaryAction:checked {
+    background: #34285c; border: 1px solid #9a84fa; color: #ffffff;
+}
+QListWidget#dashboardFeatured {
+    background: #0e1528; border: 1px solid #34405d;
+    border-radius: 14px; padding: 10px;
+}
+QListWidget#dashboardFeatured::item {
+    background: #1b2440; border: 1px solid #38466b;
+    border-radius: 10px; padding: 5px;
+}
+QListWidget#dashboardFeatured::item:hover { border: 1px solid #9c83ff; background: #29284b; }
 """
