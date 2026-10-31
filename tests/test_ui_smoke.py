@@ -173,7 +173,7 @@ class MainWindowSmokeTests(unittest.TestCase):
                    "genres": ["Mystery"]}]
         with patch.object(bulkrr, "fetch_trending", return_value=sample) as provider:
             worker.run()
-        provider.assert_called_once_with("movie", "test-value")
+        provider.assert_called_once_with("movie", "test-value", window="week")
         self.assertEqual(found, [sample])
         self.assertEqual(failures, [])
 
@@ -192,7 +192,7 @@ class MainWindowSmokeTests(unittest.TestCase):
                                 window.load_tmdb_trending("tv")
                                 worker.assert_called_once_with(
                                     "trending_tmdb",
-                                    config={"kind": "tv", "access_token": "test-value"},
+                                    config={"kind": "tv", "window": "week", "access_token": "test-value"},
                                     done=window.tmdb_trending_loaded,
                                 )
                     finally:
@@ -1208,8 +1208,8 @@ class MainWindowSmokeTests(unittest.TestCase):
                 with patch("keyring.get_password", return_value=None):
                     window = bulkrr.Main()
                     try:
-                        self.assertEqual(window.navigation.count(), 5)
-                        self.assertEqual(window.tabs.currentIndex(), 1)
+                        self.assertEqual(window.navigation.count(), 6)
+                        self.assertEqual(window.tabs.currentIndex(), 0)
                         window.items = [
                             {"input": "Ready", "matches": [], "selected": -1, "status": "ready"},
                             {"input": "Review", "matches": [], "selected": -1, "status": "review"},
@@ -1228,7 +1228,7 @@ class MainWindowSmokeTests(unittest.TestCase):
                         self.assertEqual([window.table.isRowHidden(i) for i in range(3)],
                                          [True, True, False])
                         window.navigation.setCurrentRow(4)
-                        self.assertEqual(window.tabs.currentIndex(), 4)
+                        self.assertEqual(window.tabs.currentIndex(), 1)
                     finally:
                         window.close()
 
