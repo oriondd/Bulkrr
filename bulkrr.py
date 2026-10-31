@@ -456,6 +456,8 @@ class Worker(QThread):
                 self.finished_data.emit(out)
             elif self.task == "import":
                 results = []
+                # Cache a library snapshot per destination for this batch.
+                existing_by_app = {}
                 for i, item in enumerate(self.items, 1):
                     m = item["matches"][item["selected"]]
                     app = m["app"]
@@ -471,7 +473,9 @@ class Worker(QThread):
                     )
                     endpoint = "movie" if app == "radarr" else "series"
                     try:
-                        existing = self.call(app, endpoint)
+                        if app not in existing_by_app:
+                            existing_by_app[app] = self.call(app, endpoint)
+                        existing = existing_by_app[app]
                     except Exception as exc:
                         results.append((item["input"], "red", f"Library check failed: {exc}"))
                         self.progress.emit(f"  Could not verify {obj['title']} in {app.title()}: {exc}")
@@ -625,7 +629,12 @@ class Worker(QThread):
                         "Submitting to " + app.title() + "...",
                     )
                     try:
-                        self.call(app, endpoint, "POST", obj)
+                        added = self.call(app, endpoint, "POST", obj)
+                        # Keep the cached snapshot current after additions.
+                        if isinstance(added, dict):
+                            existing_by_app[app].append(added)
+                        else:
+                            existing_by_app.pop(app, None)
                         results.append(
                             (
                                 item["input"],
