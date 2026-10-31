@@ -3996,6 +3996,8 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(str(ASSET_DIR / "Bulkrr.ico")))
     video_path = ASSET_DIR / "Bulkrr-splash.mp4"
+    if not video_path.is_file():
+        video_path = ASSET_DIR / "Bulkrr splash.mp4"
     splash = None
     intro = None
     player = None
