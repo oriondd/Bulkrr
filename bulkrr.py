@@ -1047,6 +1047,10 @@ class Main(QMainWindow):
         self.restore_selected_btn.setObjectName("secondaryAction")
         self.restore_selected_btn.clicked.connect(self.restore_selected_rows)
         row.addWidget(self.restore_selected_btn)
+        self.edit_title_btn = QPushButton("Edit title and recheck")
+        self.edit_title_btn.setObjectName("secondaryAction")
+        self.edit_title_btn.clicked.connect(self.edit_selected_title)
+        row.addWidget(self.edit_title_btn)
         self.review_btn = QPushButton("Confirm / change selected match")
         self.review_btn.clicked.connect(self.review)
         self.review_btn.setObjectName("secondaryAction")
@@ -2470,6 +2474,7 @@ class Main(QMainWindow):
         selected = self.items[row] if 0 <= row < len(self.items) else None
         busy = bool(self.worker and self.worker.isRunning())
         self.review_btn.setEnabled(bool(selected and selected.get("matches")) and not busy)
+        self.edit_title_btn.setEnabled(bool(selected) and bool(self.server_data) and not busy)
         self.duplicate_btn.setEnabled(bool(selected and selected.get("duplicate")) and not busy)
         self.skip_selected_btn.setEnabled(
             not busy and any(
@@ -2581,6 +2586,52 @@ class Main(QMainWindow):
             f"{item.get('message', '')}\n\n{overview}"
         )
         self.fetch_poster(match, self.poster)
+
+    def edit_selected_title(self):
+        """Correct one input and recheck its metadata and library status only."""
+        if self.worker and self.worker.isRunning():
+            return
+        row = self.table.currentRow()
+        if not 0 <= row < len(self.items):
+            return
+        if not self.server_data:
+            QMessageBox.warning(self, "Not connected", "Connect to your servers before rechecking a title.")
+            return
+        previous = self.items[row]["input"]
+        updated, accepted = QInputDialog.getText(
+            self, "Correct input title", "Title, optionally prefixed movie: / tv: / anime:",
+            text=previous,
+        )
+        if not accepted:
+            return
+        updated = updated.strip()
+        if not updated or updated == previous:
+            return
+        lines = self.input.toPlainText().splitlines()
+        if previous in lines:
+            lines[lines.index(previous)] = updated
+            self.input.setPlainText("\\n".join(lines))
+        self._edit_recheck_row = row
+        self._edit_recheck_previous = list(self.items)
+        self.items[row] = {
+            "input": updated, "matches": [], "selected": -1,
+            "status": "working", "message": "Rechecking corrected title",
+            "action": "review",
+        }
+        self.refresh()
+        self.logmsg(f"Rechecking corrected title: {previous} -> {updated}")
+        self.run_worker("analyze", items=[updated], done=self.edited_title_analyzed)
+
+    def edited_title_analyzed(self, results):
+        row = getattr(self, "_edit_recheck_row", -1)
+        if 0 <= row < len(self.items) and results:
+            self.items[row] = results[0]
+        self._edit_recheck_row = -1
+        self._edit_recheck_previous = []
+        self.apply_category_decisions()
+        self.refresh()
+        if 0 <= row < len(self.items):
+            self.table.selectRow(row)
 
     def review_row(self, row, column):
         """Open the correction dialog directly from the selected review row."""
