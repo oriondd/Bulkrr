@@ -117,6 +117,31 @@ class ServerProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "500 titles"):
             check_routed_libraries(routes, lambda _: [])
 
+    def test_routed_import_plan_keeps_per_server_destinations_separate(self):
+        from bulkrr_servers import plan_routed_imports
+        profiles = [{"id": "anime", "kind": "sonarr", "url": "http://anime:8989"},
+                    {"id": "movies", "kind": "radarr", "url": "http://movies:7878"}]
+        assignments = [{"item_id": 1, "kind": "sonarr", "profile_id": "anime"},
+                       {"item_id": 2, "kind": "radarr", "profile_id": "movies"}]
+        settings = {
+            "anime": {"quality_profile_id": 3, "root_folders": {"tv": "/tv", "anime": "/anime"}},
+            "movies": {"quality_profile_id": 7, "root_folders": {"movie": "/movies"}},
+        }
+        plan = plan_routed_imports(profiles, assignments, settings)
+        self.assertEqual(plan[0]["root_folders"]["anime"], "/anime")
+        self.assertEqual(plan[1]["quality_profile_id"], 7)
+        self.assertNotIn("key", str(plan))
+
+    def test_routed_import_plan_refuses_missing_server_settings(self):
+        from bulkrr_servers import plan_routed_imports
+        profiles = [{"id": "anime", "kind": "sonarr", "url": "http://anime:8989"}]
+        assignments = [{"item_id": 1, "kind": "sonarr", "profile_id": "anime"}]
+        with self.assertRaisesRegex(ValueError, "Missing settings"):
+            plan_routed_imports(profiles, assignments, {})
+        with self.assertRaisesRegex(ValueError, "root folder"):
+            plan_routed_imports(profiles, assignments, {
+                "anime": {"quality_profile_id": 1, "root_folders": {"tv": "/tv"}}})
+
 
 if __name__ == "__main__":
     unittest.main()
