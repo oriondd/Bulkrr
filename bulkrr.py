@@ -1449,7 +1449,8 @@ class Main(QMainWindow):
         self.tmdb_movie_button.hide()
         self.tmdb_tv_button.hide()
         self.trending_anime_button.hide()
-        self.tmdb_token_reset.hide()
+        # Keep the token reset available inside Advanced Tools rather than
+        # hiding the only recovery action for an expired TMDB credential.
         # Category picker remains the primary browsing control; legacy shortcuts
         # stay connected for compatibility but no longer clutter the workspace.
 
