@@ -1573,6 +1573,13 @@ class Main(QMainWindow):
     def row_update(self, index, status, message):
         if (
             self.worker
+            and self.worker.task == "analyze"
+            and getattr(self, "active_analysis_rows", None) is not None
+        ):
+            mapping = self.active_analysis_rows
+            index = mapping[index] if 0 <= index < len(mapping) else -1
+        if (
+            self.worker
             and self.worker.task == "import"
             and hasattr(self, "active_import_rows")
         ):
@@ -1613,6 +1620,8 @@ class Main(QMainWindow):
     def run_worker(self, task, items=None, config=None, done=None):
         if self.worker and self.worker.isRunning():
             return
+        if task == "analyze" and done not in (self.resumed_analysis, self.edited_title_analyzed):
+            self.active_analysis_rows = None
         self.worker = Worker(task, dict(self.connections), items, config)
         self.worker.progress.connect(self.logmsg)
         self.worker.row_progress.connect(self.row_update)
@@ -2321,6 +2330,10 @@ class Main(QMainWindow):
         if not pending:
             return
         self._resume_previous_items = list(self.items)
+        self.active_analysis_rows = [
+            index for index, item in enumerate(self.items)
+            if item.get("message") == "Analysis stopped before lookup"
+        ]
         self.resume_analysis_btn.setEnabled(False)
         self.logmsg(f"Resuming {len(pending)} unfinished title(s); completed results preserved")
         self.run_worker("analyze", items=pending, done=self.resumed_analysis)
@@ -2656,6 +2669,7 @@ class Main(QMainWindow):
         lines[lines.index(previous)] = updated
         self.input.setPlainText("\n".join(lines))
         self._edit_recheck_row = row
+        self.active_analysis_rows = [row]
         self._edit_recheck_previous = list(self.items)
         self.items[row] = {
             "input": updated, "matches": [], "selected": -1,
