@@ -631,7 +631,12 @@ class Worker(QThread):
                             (item["input"], "red", "Invalid quality profile ID")
                         )
                         continue
-                    obj["rootFolderPath"] = folder
+                    if not isinstance(folder, str) or not folder.strip():
+                        results.append(
+                            (item["input"], "red", "Invalid root folder path")
+                        )
+                        continue
+                    obj["rootFolderPath"] = folder.strip()
                     obj["qualityProfileId"] = profile_id
                     obj["monitored"] = True
                     obj["addOptions"] = (
