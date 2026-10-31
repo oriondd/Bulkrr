@@ -3010,6 +3010,20 @@ class Main(QMainWindow):
         pending = [
             i for i in self.items if i["status"] == "ready" and i["selected"] >= 0
         ]
+        duplicate_inputs = set()
+        seen_inputs = set()
+        for item in pending:
+            key = str(item.get("input", "")).strip().casefold()
+            if key in seen_inputs:
+                duplicate_inputs.add(key)
+            seen_inputs.add(key)
+        if duplicate_inputs:
+            QMessageBox.warning(
+                self, "Duplicate approved titles",
+                f"{len(duplicate_inputs)} title name(s) appear more than once in the "
+                "approved batch. Remove or resolve duplicates before importing.",
+            )
+            return
         unfinished = sum(
             item.get("status") == "working"
             or item.get("message") == "Analysis stopped before lookup"
