@@ -1616,6 +1616,8 @@ class Main(QMainWindow):
         self.worker = Worker(task, dict(self.connections), items, config)
         self.worker.progress.connect(self.logmsg)
         self.worker.row_progress.connect(self.row_update)
+        if task == "analyze" and done == self.edited_title_analyzed:
+            self.worker.failed.connect(self.edited_title_failed)
         self.worker.failed.connect(
             lambda e: (
                 self.connection_error() if task == "connect" else None,
@@ -2663,6 +2665,17 @@ class Main(QMainWindow):
         self.refresh()
         self.logmsg(f"Rechecking corrected title: {previous} -> {updated}")
         self.run_worker("analyze", items=[updated], done=self.edited_title_analyzed)
+
+    def edited_title_failed(self, error):
+        """Make a failed recheck explicit rather than leaving a working placeholder."""
+        row = getattr(self, "_edit_recheck_row", -1)
+        if 0 <= row < len(self.items):
+            self.items[row]["status"] = "error"
+            self.items[row]["action"] = "review"
+            self.items[row]["message"] = "Title recheck failed — retry before importing"
+            self.refresh()
+        self._edit_recheck_row = -1
+        self._edit_recheck_previous = []
 
     def edited_title_analyzed(self, results):
         row = getattr(self, "_edit_recheck_row", -1)
