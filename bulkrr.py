@@ -1550,6 +1550,7 @@ class Main(QMainWindow):
         self.discover_calendar_toggle.toggled.connect(calendar_panel.setVisible)
         discover_layout.addWidget(self.discover_calendar_toggle)
         discover_layout.addWidget(calendar_panel)
+        self.discover_page = discover_page
         tabs.addTab(discover_page, "4. Discover")
         self.log = QTextEdit()
         self.log.setReadOnly(True)
@@ -1674,8 +1675,12 @@ class Main(QMainWindow):
         row = self.dashboard_featured.row(item)
         if row < 0 or row >= self.discover_results.count():
             return
-        self.tabs.setCurrentIndex(4)
+        discover_index = self.tabs.indexOf(self.discover_page)
+        if discover_index < 0:
+            return
+        self.tabs.setCurrentIndex(discover_index)
         self.discover_results.setCurrentRow(row)
+        self.show_discovery_details(row)
         self.discover_results.scrollToItem(
             self.discover_results.item(row),
             QAbstractItemView.ScrollHint.PositionAtCenter,
