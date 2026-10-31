@@ -698,6 +698,28 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_duplicate_approved_names_block_import(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.settings = {"search": True}
+                        window.server_data = {"radarr": {}}
+                        window.items = [
+                            {"input": "movie: Repeat", "status": "ready",
+                             "selected": 0, "matches": [], "message": "Ready"},
+                            {"input": "MOVIE: REPEAT", "status": "ready",
+                             "selected": 0, "matches": [], "message": "Ready"},
+                        ]
+                        with patch.object(window, "run_worker") as worker:
+                            with patch.object(bulkrr.QMessageBox, "warning") as warning:
+                                window.import_items()
+                        worker.assert_not_called()
+                        self.assertIn("Duplicate approved titles", warning.call_args.args)
+                    finally:
+                        window.close()
+
     def test_mismatched_radarr_series_selection_blocks_import(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
