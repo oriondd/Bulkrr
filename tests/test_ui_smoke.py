@@ -312,6 +312,8 @@ class MainWindowSmokeTests(unittest.TestCase):
                               "id": 22, "data": {"title": "Film"}}], "selected": 0,
                              "status": "ready"}]
                         window.refresh()
+                        window.table.setSelectionMode(
+                            bulkrr.QAbstractItemView.SelectionMode.MultiSelection)
                         window.table.selectRow(0)
                         window.table.selectRow(1)
                         with patch.object(bulkrr.QInputDialog, "getItem",
