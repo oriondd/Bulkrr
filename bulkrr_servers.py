@@ -278,3 +278,47 @@ def preview_routed_import_batches(batches, fetch_library):
                                 "action": "blocked", "already_exists": None,
                                 "error": str(exc)})
     return results
+
+
+def execute_routed_adds(batches, fetch_library, add_title, *, approved=False, search=False):
+    """Execute explicitly approved new-title adds on their designated servers.
+
+    Recheck each destination's library immediately before writing. Existing
+    titles are always skipped; upgrade/replace execution is intentionally not
+    supported here. A failed server never causes fallback to another server.
+    add_title(profile, endpoint, payload) performs the actual POST.
+    """
+    if approved is not True:
+        raise PermissionError("Explicit import approval is required")
+    if type(search) is not bool or not callable(add_title):
+        raise ValueError("Invalid import execution options")
+    # Validate the complete plan before any requests or writes.
+    # Preview with the real reader validates all batches and checks duplicates.
+    preview = preview_routed_import_batches(batches, fetch_library)
+    by_profile = {batch["profile"]["id"]: batch for batch in batches}
+    results = []
+    for entry in preview:
+        profile_id, item_id = entry["profile_id"], entry["item_id"]
+        if entry["error"]:
+            results.append({"profile_id": profile_id, "item_id": item_id,
+                            "status": "blocked", "error": entry["error"]})
+            continue
+        if entry["already_exists"]:
+            results.append({"profile_id": profile_id, "item_id": item_id,
+                            "status": "skipped", "error": None})
+            continue
+        batch = by_profile[profile_id]
+        item = next(item for item in batch["items"] if item["item_id"] == item_id)
+        profile = batch["profile"]
+        payload = dict(item["payload"])
+        endpoint = "movie" if profile["kind"] == "radarr" else "series"
+        payload["addOptions"] = ({"searchForMovie": search} if endpoint == "movie"
+                                 else {"searchForMissingEpisodes": search})
+        try:
+            add_title(profile, endpoint, payload)
+            results.append({"profile_id": profile_id, "item_id": item_id,
+                            "status": "added", "error": None})
+        except Exception as exc:
+            results.append({"profile_id": profile_id, "item_id": item_id,
+                            "status": "failed", "error": str(exc)})
+    return results
