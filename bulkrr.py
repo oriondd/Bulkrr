@@ -67,6 +67,7 @@ from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
 from bulkrr_calendar import fetch_schedule
 from bulkrr_collections import expand_collection
+from bulkrr_extensions import discover_manifests
 
 
 class PosterWorker(QThread):
@@ -747,6 +748,9 @@ class Main(QMainWindow):
         self.update_button = QPushButton("Check for Bulkrr updates")
         self.update_button.clicked.connect(self.check_updates)
         self.setup_layout.addWidget(self.update_button)
+        self.extension_btn = QPushButton("Load title-list extension")
+        self.extension_btn.clicked.connect(self.load_extension)
+        self.setup_layout.addWidget(self.extension_btn)
         self.form = QFormLayout()
         self.combo = {}
         for name, label in (
@@ -1128,6 +1132,27 @@ class Main(QMainWindow):
         for app in self.connections:
             self.connection_leds[app].set_status("disconnected")
             self.connection_labels[app].setText("Connection failed — see Activity log")
+
+    def load_extension(self):
+        folder = APPDIR / "extensions"
+        folder.mkdir(parents=True, exist_ok=True)
+        found = discover_manifests(folder)
+        if not found:
+            QMessageBox.information(self, "No extensions", f"No valid JSON title-list extensions found in {folder}")
+            return
+        labels = [f"{entry['name']} — {len(entry['titles'])} titles" for _, entry in found]
+        from PySide6.QtWidgets import QInputDialog
+        choice, ok = QInputDialog.getItem(self, "Load extension", "Choose a title-list extension", labels, 0, False)
+        if not ok:
+            return
+        index = labels.index(choice)
+        entry = found[index][1]
+        titles = normalize_titles(self.input.toPlainText().splitlines() + entry["titles"])
+        self.input.setPlainText("\n".join(titles))
+        self.items = []
+        self.refresh()
+        self.tabs.setCurrentIndex(1)
+        self.logmsg(f"Loaded extension '{entry['name']}' for manual review")
 
     def check_updates(self):
         if self.worker and self.worker.isRunning():
