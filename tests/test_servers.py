@@ -66,6 +66,35 @@ class ServerProfileTests(unittest.TestCase):
             with self.subTest(assignments=str(assignments[:1])), self.assertRaises(ValueError):
                 route_to_profiles(profiles, assignments)
 
+    def test_multi_server_library_checks_are_isolated(self):
+        from bulkrr_servers import route_to_profiles, check_routed_libraries
+        profiles = [{"id": "one", "kind": "sonarr", "url": "http://one:8989"},
+                    {"id": "two", "kind": "sonarr", "url": "http://two:8989"}]
+        routes = route_to_profiles(profiles, [
+            {"item_id": 1, "kind": "sonarr", "profile_id": "one"},
+            {"item_id": 2, "kind": "sonarr", "profile_id": "two"},
+        ])
+        calls = []
+        def fetch(profile):
+            calls.append(profile["id"])
+            if profile["id"] == "one":
+                raise ConnectionError("Server unavailable")
+            return [{"id": 42}]
+        result = check_routed_libraries(routes, fetch)
+        self.assertEqual(calls, ["one", "two"])
+        self.assertIn("unavailable", result[0]["error"])
+        self.assertIsNone(result[0]["library_count"])
+        self.assertEqual(result[1]["library_count"], 1)
+        self.assertIsNone(result[1]["error"])
+
+    def test_multi_server_library_check_rejects_duplicate_groups(self):
+        from bulkrr_servers import route_to_profiles, check_routed_libraries
+        routes = route_to_profiles(
+            [{"id": "one", "kind": "radarr", "url": "http://one:7878"}],
+            [{"item_id": 1, "kind": "radarr", "profile_id": "one"}])
+        with self.assertRaises(ValueError):
+            check_routed_libraries(routes + routes, lambda _: [])
+
 
 if __name__ == "__main__":
     unittest.main()
