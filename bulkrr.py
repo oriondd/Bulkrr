@@ -70,7 +70,7 @@ from bulkrr_tmdb import fetch_trending, fetch_collection, search_collections
 from bulkrr_recommendations import rank_candidates
 from bulkrr_genres import favorite_genres
 from bulkrr_settings import write_settings
-from bulkrr_servers import validate_profiles, legacy_profiles, route_to_profiles, check_routed_libraries
+from bulkrr_servers import validate_profiles, legacy_profiles, route_to_profiles, check_routed_libraries, plan_routed_imports, prepare_routed_import_batches, preview_routed_import_batches, execute_routed_adds
 from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
 from bulkrr_calendar import fetch_schedule
@@ -188,6 +188,26 @@ class Worker(QThread):
                         except Exception as exc:
                             result["errors"].append(f"{app.title()}: {exc}")
                 self.finished_data.emit(result)
+            elif self.task in ("routed_import_preview", "routed_import_execute"):
+                batches = self.config["batches"]
+                credentials = self.config["credentials"]
+                def fetch(profile):
+                    key = credentials.get(profile["id"])
+                    if not key:
+                        raise ValueError("Missing destination API key")
+                    return get_json(profile["url"], key,
+                                    "movie" if profile["kind"] == "radarr" else "series")
+                if self.task == "routed_import_preview":
+                    self.finished_data.emit(preview_routed_import_batches(batches, fetch))
+                else:
+                    def add(profile, endpoint, payload):
+                        key = credentials.get(profile["id"])
+                        if not key:
+                            raise ValueError("Missing destination API key")
+                        return get_json(profile["url"], key, endpoint, "POST", payload)
+                    self.finished_data.emit(execute_routed_adds(
+                        batches, fetch, add, approved=self.config.get("approved") is True,
+                        search=self.config.get("search") is True))
             elif self.task == "routed_library_check":
                 routes = self.config.get("routes", [])
                 credentials = self.config.get("credentials", {})
@@ -805,6 +825,9 @@ class Main(QMainWindow):
         check_routes = QPushButton("Check selected destination library")
         check_routes.clicked.connect(self.check_extra_routing)
         extra_buttons.addWidget(check_routes)
+        import_routes = QPushButton("Prepare and confirm selected destination imports")
+        import_routes.clicked.connect(self.prepare_extra_import)
+        extra_buttons.addWidget(import_routes)
         extra_row.addLayout(extra_buttons)
         self.setup_layout.addWidget(QLabel("Additional Sonarr / Radarr instances"))
         self.setup_layout.addLayout(extra_row)
@@ -1703,6 +1726,95 @@ class Main(QMainWindow):
                 messages.append(f"{result['profile_id']}: {result['library_count']} existing library records")
         QMessageBox.information(self, "Read-only destination checks",
                                 "\n".join(messages) + "\nNo imports or searches were requested.")
+
+    def prepare_extra_import(self):
+        """Require per-destination settings and preview before any server writes."""
+        if self.worker and self.worker.isRunning():
+            return
+        row = self.extra_list.currentRow()
+        if row < 0 or row >= len(self.extra_profiles):
+            QMessageBox.information(self, "Select destination", "Select an additional server.")
+            return
+        profile = self.extra_profiles[row]
+        selection = self.table.selectionModel()
+        rows = sorted({index.row() for index in selection.selectedRows()}) if selection else []
+        assignments = []
+        for index in rows:
+            if index >= len(self.items):
+                continue
+            item = self.items[index]
+            matches = item.get("matches") or []
+            selected = item.get("selected", -1)
+            if (type(selected) is not int or selected < 0 or selected >= len(matches)
+                    or matches[selected].get("app") != profile["kind"]):
+                QMessageBox.warning(self, "Review required", "Review titles matching this server type first.")
+                return
+            assignments.append({"item_id": index + 1, "kind": profile["kind"],
+                                "profile_id": profile["id"]})
+        if not assignments:
+            QMessageBox.information(self, "Select titles", "Select reviewed titles in the review table.")
+            return
+        quality, ok = QInputDialog.getInt(self, "Destination quality profile",
+                                          "Quality profile ID for this server:", 1, 1, 999999)
+        if not ok:
+            return
+        folders = {}
+        for category in (("movie",) if profile["kind"] == "radarr" else ("tv", "anime")):
+            folder, ok = QInputDialog.getText(self, "Destination root folder",
+                                              f"{category.title()} root folder on {profile['label']}:")
+            if not ok:
+                return
+            folders[category] = folder.strip()
+        try:
+            plans = plan_routed_imports(self.extra_profiles, assignments, {
+                profile["id"]: {"quality_profile_id": quality, "root_folders": folders}})
+            batches = prepare_routed_import_batches(plans, self.items)
+            import keyring
+            secret = keyring.get_password("Bulkrr", "profile:" + profile["id"])
+            if not secret:
+                raise ValueError("Destination API key unavailable in system keyring")
+        except Exception as exc:
+            QMessageBox.warning(self, "Invalid destination plan", str(exc))
+            return
+        self.pending_routed_import = {"batches": batches,
+                                      "credentials": {profile["id"]: secret}}
+        self.run_worker("routed_import_preview", config=self.pending_routed_import,
+                        done=self.routed_import_previewed)
+
+    def routed_import_previewed(self, results):
+        pending = getattr(self, "pending_routed_import", None)
+        if not pending:
+            return
+        if any(result["error"] for result in results):
+            QMessageBox.warning(self, "Destination unavailable",
+                                "A destination library check failed. No imports were made.")
+            self.pending_routed_import = None
+            return
+        additions = sum(result["action"] == "add" for result in results)
+        skipped = len(results) - additions
+        answer = QMessageBox.question(
+            self, "Confirm destination imports",
+            f"Add {additions} new title(s) to the selected destination? "
+            f"{skipped} existing title(s) will be skipped. "
+            "Automatic download searches will be disabled. "
+            "The destination library will be checked again before writing.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No)
+        if answer != QMessageBox.StandardButton.Yes or additions == 0:
+            self.pending_routed_import = None
+            return
+        config = dict(pending)
+        config.update({"approved": True, "search": False})
+        self.pending_routed_import = None
+        self.run_worker("routed_import_execute", config=config,
+                        done=self.routed_import_finished)
+
+    def routed_import_finished(self, results):
+        counts = {status: sum(r["status"] == status for r in results)
+                  for status in ("added", "skipped", "blocked", "failed")}
+        QMessageBox.information(self, "Destination import results",
+                                ", ".join(f"{key}: {value}" for key, value in counts.items()))
+        self.logmsg("Routed import results: " + str(counts))
 
     def activate_extra_server(self):
         row = self.extra_list.currentRow()
