@@ -30,6 +30,10 @@ def main():
     assert window.navigation.count() == len(window._navigation_to_tab), (
         "Sidebar items and workspace mapping differ"
     )
+    # The first sidebar entry may already be selected at startup. Force a
+    # genuine selection change before checking the row-0 navigation signal.
+    window.navigation.setCurrentRow(-1)
+    app.processEvents()
     for sidebar_row, tab_index in enumerate(window._navigation_to_tab):
         window.navigation.setCurrentRow(sidebar_row)
         app.processEvents()
