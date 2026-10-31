@@ -59,7 +59,7 @@ def normalize_trending(payload, kind):
             "tmdb_id": record.get("id") if type(record.get("id")) is int else None,
             "poster_url": ("https://image.tmdb.org/t/p/w342" + record["poster_path"])
                 if isinstance(record.get("poster_path"), str)
-                and re.fullmatch(r"/[A-Za-z0-9_-]+\\.(?:jpg|jpeg|png|webp)", record["poster_path"]) else None,
+                and re.fullmatch(r"/[A-Za-z0-9_-]+\.(?:jpg|jpeg|png|webp)", record["poster_path"]) else None,
         })
     return found
 
@@ -83,6 +83,52 @@ def fetch_trending(kind, access_token, window="week", limit=20):
     if len(raw) > 512 * 1024:
         raise ValueError("TMDB response exceeds size limit")
     return normalize_trending(json.loads(raw.decode("utf-8")), kind)[:limit]
+
+
+
+def fetch_new_releases(kind, access_token, days=45, limit=20):
+    """Discover recently released titles, not trending titles.
+
+    The date window uses the local calendar date and TMDB release/first-air
+    dates. No library changes occur during this read-only request.
+    """
+    import datetime
+    from urllib.parse import urlencode
+    if kind not in ("movie", "tv"):
+        raise ValueError("Release type must be movie or tv")
+    if type(days) is not int or not 1 <= days <= 90:
+        raise ValueError("Release window must be 1–90 days")
+    if type(limit) is not int or not 1 <= limit <= 20:
+        raise ValueError("Release limit must be 1–20")
+    if (not isinstance(access_token, str) or not access_token.strip()
+            or len(access_token) > 512 or any(ch.isspace() for ch in access_token)):
+        raise ValueError("Provide a TMDB API read access token")
+    today = datetime.date.today()
+    first = today - datetime.timedelta(days=days)
+    field = "primary_release_date" if kind == "movie" else "first_air_date"
+    params = {
+        "language": "en-US", "sort_by": "popularity.desc",
+        "include_adult": "false", "page": "1",
+        field + ".gte": first.isoformat(),
+        field + ".lte": today.isoformat(),
+    }
+    if kind == "movie":
+        params["region"] = "US"
+    request = urllib.request.Request(
+        f"{BASE}/discover/{kind}?" + urlencode(params),
+        headers={"Accept": "application/json", "User-Agent": "Bulkrr/2.0",
+                 "Authorization": "Bearer " + access_token.strip()},
+    )
+    with urllib.request.urlopen(request, timeout=12) as response:
+        raw = response.read(512 * 1024 + 1)
+    if len(raw) > 512 * 1024:
+        raise ValueError("TMDB response exceeds size limit")
+    records = normalize_trending(json.loads(raw.decode("utf-8")), kind)
+    # Keep only records with a verifiable in-window release date.
+    return [
+        item for item in records
+        if item.get("release_date") and first.isoformat() <= item["release_date"] <= today.isoformat()
+    ][:limit]
 
 
 def normalize_collection(payload):
@@ -111,7 +157,7 @@ def normalize_collection(payload):
             "genres": [], "tmdb_id": ident, "popularity": 0,
             "poster_url": ("https://image.tmdb.org/t/p/w342" + movie["poster_path"])
                 if isinstance(movie.get("poster_path"), str)
-                and re.fullmatch(r"/[A-Za-z0-9_-]+\\.(?:jpg|jpeg|png|webp)", movie["poster_path"]) else None,
+                and re.fullmatch(r"/[A-Za-z0-9_-]+\.(?:jpg|jpeg|png|webp)", movie["poster_path"]) else None,
         })
     return records
 
