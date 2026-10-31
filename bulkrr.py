@@ -934,7 +934,7 @@ class Main(QMainWindow):
         if not lines:
             return
         titles = normalize_titles(self.input.toPlainText().splitlines() + lines)
-        self.input.setPlainText("\\n".join(titles))
+        self.input.setPlainText("\n".join(titles))
         self.items = []
         self.refresh()
         self.tabs.setCurrentIndex(1)
