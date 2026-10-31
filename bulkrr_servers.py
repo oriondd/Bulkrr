@@ -157,3 +157,63 @@ def plan_routed_imports(profiles, assignments, destinations):
         planned.append({"profile": dict(profile), "item_ids": list(route["item_ids"]),
                         "quality_profile_id": quality, "root_folders": clean_folders})
     return planned
+
+
+def prepare_routed_import_batches(plans, items):
+    """Build explicit, immutable-by-convention import payloads; never call APIs.
+
+    Plans come from plan_routed_imports. Items are indexed by their positive
+    1-based review-table IDs. Each item must have a confirmed matching kind.
+    """
+    if not isinstance(plans, list) or not isinstance(items, list) or len(items) > 500:
+        raise ValueError("Invalid routed import inputs")
+    batches = []
+    seen = set()
+    for plan in plans:
+        if not isinstance(plan, dict):
+            raise ValueError("Invalid destination plan")
+        profile = validate_profiles([plan.get("profile")])[0]
+        quality = plan.get("quality_profile_id")
+        folders = plan.get("root_folders")
+        if type(quality) is not int or quality <= 0 or not isinstance(folders, dict):
+            raise ValueError("Invalid destination settings")
+        ids = plan.get("item_ids")
+        if not isinstance(ids, list) or not ids:
+            raise ValueError("Destination has no titles")
+        prepared = []
+        for item_id in ids:
+            if type(item_id) is not int or item_id < 1 or item_id > len(items) or item_id in seen:
+                raise ValueError("Invalid or duplicate reviewed title ID")
+            seen.add(item_id)
+            item = items[item_id - 1]
+            if not isinstance(item, dict):
+                raise ValueError("Invalid reviewed title")
+            matches = item.get("matches")
+            selected = item.get("selected")
+            if (not isinstance(matches, list) or type(selected) is not int
+                    or selected < 0 or selected >= len(matches)):
+                raise ValueError("Title requires an explicit metadata selection")
+            match = matches[selected]
+            if not isinstance(match, dict) or match.get("app") != profile["kind"]:
+                raise ValueError("Reviewed title does not match destination server kind")
+            category = match.get("type")
+            if category not in (("movie",) if profile["kind"] == "radarr" else ("tv", "anime")):
+                raise ValueError("Invalid destination title category")
+            folder = folders.get(category)
+            if not isinstance(folder, str) or not folder.strip():
+                raise ValueError("Missing root folder for reviewed title")
+            metadata = match.get("data")
+            if not isinstance(metadata, dict) or not metadata.get("title"):
+                raise ValueError("Reviewed title lacks import metadata")
+            payload = dict(metadata)
+            payload["rootFolderPath"] = folder.strip()
+            payload["qualityProfileId"] = quality
+            payload["monitored"] = True
+            if profile["kind"] == "sonarr":
+                payload["seriesType"] = "anime" if category == "anime" else "standard"
+                payload["seasonFolder"] = True
+            prepared.append({"item_id": item_id, "category": category,
+                             "metadata_id": match.get("id"), "payload": payload,
+                             "duplicate_action": item.get("action", "skip")})
+        batches.append({"profile": dict(profile), "items": prepared})
+    return batches
