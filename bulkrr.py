@@ -1135,6 +1135,13 @@ class Main(QMainWindow):
         self.update_review_actions()
 
     def connection_error(self):
+        self.server_data = {}
+        self.items = []
+        self.library_entries = []
+        self.library_counts = (0, 0)
+        self.refresh()
+        for combo in self.combo.values():
+            combo.clear()
         for app in self.connections:
             self.connection_leds[app].set_status("disconnected")
             self.connection_labels[app].setText("Connection failed — see Activity log")
