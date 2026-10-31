@@ -219,6 +219,46 @@ class MainWindowSmokeTests(unittest.TestCase):
         self.assertEqual(results, [{"queued": 1, "errors": []}])
         self.assertEqual(failures, [])
 
+
+    def test_multi_server_routing_preview_never_calls_api(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.extra_profiles = [
+                            {"id": "sonarr_extra", "kind": "sonarr",
+                             "url": "http://extra:8989", "label": "Anime"}]
+                        window.refresh_extra_list()
+                        window.extra_list.setCurrentRow(0)
+                        window.items = [{"input": "Example", "matches": [
+                            {"app": "sonarr", "type": "anime", "label": "Example"}],
+                            "selected": 0, "status": "ready", "message": "Ready"}]
+                        window.refresh()
+                        window.table.selectRow(0)
+                        with patch.object(window, "run_worker") as worker:
+                            with patch.object(bulkrr.QMessageBox, "information") as notice:
+                                window.preview_extra_routing()
+                                self.assertIn("No server requests", notice.call_args.args[2])
+                            worker.assert_not_called()
+                    finally:
+                        window.close()
+
+    def test_episode_upgrade_cancel_does_not_start_search(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        with patch.object(bulkrr.QMessageBox, "question",
+                                          return_value=bulkrr.QMessageBox.StandardButton.No):
+                            with patch.object(window, "run_worker") as worker:
+                                window.episode_upgrades_previewed(
+                                    [{"name": "EpisodeSearch", "episodeIds": [21]}])
+                                worker.assert_not_called()
+                    finally:
+                        window.close()
+
     def test_new_phase_tabs_and_actions_construct_without_network(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
