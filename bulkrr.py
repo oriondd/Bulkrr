@@ -1104,6 +1104,11 @@ class Main(QMainWindow):
             ]
         )
         self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
+        self.table.verticalHeader().setVisible(False)
+        self.table.verticalHeader().setDefaultSectionSize(54)
+        self.table.setWordWrap(False)
+        self.table.setObjectName("reviewResults")
         self.table.setSortingEnabled(False)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setMinimumHeight(360)
@@ -2940,6 +2945,12 @@ class Main(QMainWindow):
                     "working": "#77bfff",
                 }.get(status, "#e9edf6")
                 cell.setForeground(QBrush(QColor(color)))
+                if col in (1, 2):
+                    cell.setToolTip(str(value))
+                if col == 1:
+                    font = cell.font()
+                    font.setBold(True)
+                    cell.setFont(font)
                 self.table.setItem(row, col, cell)
         if 0 <= previous_row < len(self.items):
             self.table.selectRow(previous_row)
