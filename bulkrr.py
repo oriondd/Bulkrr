@@ -967,6 +967,13 @@ class Main(QMainWindow):
         self.review_filter.addItems(["All titles", "Needs review", "Ready", "Skipped / excluded", "Unmatched"])
         self.review_filter.currentIndexChanged.connect(self.apply_review_filter)
         filter_row.addWidget(self.review_filter)
+        self.review_search = QLineEdit()
+        self.review_search.setPlaceholderText("Find title in this batch...")
+        self.review_search.setClearButtonEnabled(True)
+        self.review_search.textChanged.connect(self.apply_review_filter)
+        filter_row.addWidget(self.review_search, 1)
+        self.review_visible_count = QLabel("0 shown")
+        filter_row.addWidget(self.review_visible_count)
         filter_row.addStretch()
         v.addLayout(filter_row)
         self.table = QTableWidget(0, 7)
@@ -2387,6 +2394,8 @@ class Main(QMainWindow):
         if not hasattr(self, "table") or not hasattr(self, "review_filter"):
             return
         choice = self.review_filter.currentIndex()
+        search = self.review_search.text().strip().casefold()
+        visible = 0
         for row, item in enumerate(self.items):
             status = item.get("status")
             show = (
@@ -2396,7 +2405,17 @@ class Main(QMainWindow):
                 or choice == 3 and status == "skipped"
                 or choice == 4 and not item.get("matches")
             )
+            if search:
+                match = (
+                    item.get("matches", [])[item.get("selected", -1)]
+                    if 0 <= item.get("selected", -1) < len(item.get("matches", []))
+                    else None
+                )
+                title = (match or {}).get("label") or (match or {}).get("data", {}).get("title", "")
+                show = show and search in (item.get("input", "") + " " + title).casefold()
             self.table.setRowHidden(row, not show)
+            visible += int(show)
+        self.review_visible_count.setText(f"{visible:,} of {len(self.items):,} shown")
 
     def update_review_actions(self):
         row = self.table.currentRow()
