@@ -22,6 +22,30 @@ This branch combines Phase 3 (library management), Phase 4 (discovery), and Phas
 - Linux and macOS compatibility work and CI coverage
 - Documented, versioned extension interface with safe boundaries
 
+## Implemented in the current preview
+
+- Missing movie/episode inventory, storage estimates, confirmed searches, and
+  conservative Radarr movie upgrades only when the API explicitly reports
+  that a downloaded file is below the quality cutoff.
+- Named server profiles, saved review snapshots, lookup discovery, public
+  AniList trending anime, and local keyword-based ranking of discovered titles.
+- US TVMaze episode schedule, title-based franchise candidates, declarative
+  title-list extensions, update links, and Windows portable/installer previews.
+- Cross-platform test matrix and an additional headless Qt startup smoke test.
+
+## Remaining limitations before release
+
+- Sonarr episode-level quality upgrade identification is not yet implemented.
+- Trending movie/TV ranking requires a reliable live data source; title lookup
+  is not presented as trending.
+- Keyword ranking uses user-entered interests rather than automatically
+  analyzing personal library history.
+- Franchise matching is title-based, not authoritative TMDB collection lookup.
+- Named server profiles switch the active destination; simultaneous multi-server
+  import routing is not implemented.
+- CI results and the Windows installer still require verification before the
+  single end-to-end acceptance test.
+
 ## Release gates
 1. Unit and integration tests for new features; mocked APIs must not modify user libraries.
 2. CI passing on all supported build targets.
