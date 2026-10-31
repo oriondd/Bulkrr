@@ -708,8 +708,10 @@ class Main(QMainWindow):
             form.addRow("API key", self.key[app])
             form.addRow("Status", status_box)
             self.setup_layout.addWidget(group)
-        self.extra_profiles = legacy_profiles(self.settings)
-        self.extra_profiles = [p for p in self.settings.get("extra_profiles", []) if isinstance(p, dict)]
+        try:
+            self.extra_profiles = validate_profiles(self.settings.get("extra_profiles", []))
+        except ValueError:
+            self.extra_profiles = []
         self.extra_connections = {}
         extra_row = QHBoxLayout()
         self.extra_list = QListWidget()
@@ -723,6 +725,9 @@ class Main(QMainWindow):
         remove_extra = QPushButton("Remove selected")
         remove_extra.clicked.connect(self.remove_extra_server)
         extra_buttons.addWidget(remove_extra)
+        activate_extra = QPushButton("Use selected server")
+        activate_extra.clicked.connect(self.activate_extra_server)
+        extra_buttons.addWidget(activate_extra)
         extra_row.addLayout(extra_buttons)
         self.setup_layout.addWidget(QLabel("Additional Sonarr / Radarr instances"))
         self.setup_layout.addLayout(extra_row)
@@ -1057,6 +1062,10 @@ class Main(QMainWindow):
         )
         self.worker.finished_data.connect(done)
         self.worker.finished.connect(self.update_review_actions)
+        if task == "library_scan":
+            self.worker.finished.connect(lambda: self.library_scan_btn.setEnabled(True))
+        if task == "discover":
+            self.worker.finished.connect(lambda: self.discover_button.setEnabled(True))
         self.worker.start()
         self.update_review_actions()
 
@@ -1126,6 +1135,24 @@ class Main(QMainWindow):
             return
         self.extra_profiles.append(profile)
         self.refresh_extra_list()
+
+    def activate_extra_server(self):
+        row = self.extra_list.currentRow()
+        if row < 0:
+            return
+        profile = self.extra_profiles[row]
+        try:
+            import keyring
+            secret = keyring.get_password("Bulkrr", "profile:" + profile["id"])
+        except Exception:
+            secret = None
+        if not secret:
+            QMessageBox.warning(self, "Missing credentials", "API key unavailable in the system keyring.")
+            return
+        app = profile["kind"]
+        self.url[app].setText(profile["url"])
+        self.key[app].setText(secret)
+        self.logmsg(f"Selected {app.title()} profile: {profile['label']}. Test connections to activate.")
 
     def remove_extra_server(self):
         row = self.extra_list.currentRow()
