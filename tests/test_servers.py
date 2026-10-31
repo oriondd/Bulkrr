@@ -95,6 +95,28 @@ class ServerProfileTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             check_routed_libraries(routes + routes, lambda _: [])
 
+    def test_library_check_refuses_same_title_on_two_servers_before_requests(self):
+        from bulkrr_servers import check_routed_libraries
+        routes = [
+            {"profile": {"id": "one", "kind": "sonarr", "url": "http://one:8989"},
+             "item_ids": [1]},
+            {"profile": {"id": "two", "kind": "sonarr", "url": "http://two:8989"},
+             "item_ids": [1]},
+        ]
+        with self.assertRaisesRegex(ValueError, "multiple destinations"):
+            check_routed_libraries(routes, lambda _: [])
+
+    def test_library_check_enforces_global_title_limit(self):
+        from bulkrr_servers import check_routed_libraries
+        routes = [
+            {"profile": {"id": "one", "kind": "sonarr", "url": "http://one:8989"},
+             "item_ids": list(range(1, 302))},
+            {"profile": {"id": "two", "kind": "sonarr", "url": "http://two:8989"},
+             "item_ids": list(range(302, 502))},
+        ]
+        with self.assertRaisesRegex(ValueError, "500 titles"):
+            check_routed_libraries(routes, lambda _: [])
+
 
 if __name__ == "__main__":
     unittest.main()
