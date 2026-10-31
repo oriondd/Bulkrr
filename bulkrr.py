@@ -1427,6 +1427,24 @@ class Main(QMainWindow):
         self.dashboard_activity = QLabel("Your latest imports and searches will appear in Activity Log.")
         self.dashboard_activity.setWordWrap(True)
         dashboard_layout.addWidget(self.dashboard_activity)
+        dashboard_layout.addWidget(QLabel("Discover highlights"))
+        self.dashboard_discover_note = QLabel("Explore trending movies, TV, and anime to populate this section.")
+        self.dashboard_discover_note.setWordWrap(True)
+        dashboard_layout.addWidget(self.dashboard_discover_note)
+        self.dashboard_featured = QListWidget()
+        self.dashboard_featured.setObjectName("dashboardFeatured")
+        self.dashboard_featured.setViewMode(QListWidget.ViewMode.IconMode)
+        self.dashboard_featured.setFlow(QListWidget.Flow.LeftToRight)
+        self.dashboard_featured.setWrapping(False)
+        self.dashboard_featured.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.dashboard_featured.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.dashboard_featured.setIconSize(QSize(90, 128))
+        self.dashboard_featured.setGridSize(QSize(130, 174))
+        self.dashboard_featured.setFixedHeight(205)
+        self.dashboard_featured.itemDoubleClicked.connect(
+            lambda item: tabs.setCurrentIndex(4)
+        )
+        dashboard_layout.addWidget(self.dashboard_featured)
         dashboard_layout.addStretch()
         tabs.insertTab(0, dashboard, "Dashboard")
         self.tabs = tabs
@@ -1630,6 +1648,11 @@ class Main(QMainWindow):
         self.discover_results.clear()
         self.show_discovery_details(-1)
         self.discover_count.setText(f"{len(records)} titles")
+        self.dashboard_featured.clear()
+        self.dashboard_discover_note.setText(
+            f"{len(records)} titles from your latest discovery. Double-click to open Discover."
+            if records else "No results yet. Try searching or browsing trending titles."
+        )
         for entry in records:
             title = entry["title"]
             year = entry.get("year") or "—"
@@ -1637,9 +1660,15 @@ class Main(QMainWindow):
             item.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)
             item.setToolTip(f"{title} ({year})\\n{str(entry.get('overview') or '')[:500]}")
             self.discover_results.addItem(item)
+            if self.dashboard_featured.count() < 12:
+                featured = QListWidgetItem(f"{title}\\n{year}")
+                featured.setTextAlignment(Qt.AlignmentFlag.AlignHCenter)
+                self.dashboard_featured.addItem(featured)
             url = entry.get("poster_url")
             if isinstance(url, str) and url.startswith(("https://image.tmdb.org/t/p/", "https://s4.anilist.co/", "https://s3.anilist.co/")):
                 self.fetch_discovery_artwork(url, item)
+                if self.dashboard_featured.count() <= 12 and self.discover_results.row(item) < 12:
+                    self.fetch_discovery_artwork(url, self.dashboard_featured.item(self.discover_results.row(item)))
         self.logmsg(f"Discovery returned {len(records)} matching titles")
 
     def fetch_discovery_artwork(self, url, item):
@@ -1658,7 +1687,7 @@ class Main(QMainWindow):
         worker.start()
 
     def apply_discovery_artwork(self, item, url, data):
-        if not data or self.discover_results.row(item) < 0:
+        if not data or (self.discover_results.row(item) < 0 and self.dashboard_featured.row(item) < 0):
             return
         pix = QPixmap()
         if pix.loadFromData(data):
@@ -1926,6 +1955,8 @@ class Main(QMainWindow):
         )
         entry = f"[{timestamp}] {s}"
         self.log.append(entry)
+        if hasattr(self, "dashboard_activity"):
+            self.dashboard_activity.setText(s[:200])
         logging.info("%s", s)
         self.statusBar().showMessage(s[:150])
 
