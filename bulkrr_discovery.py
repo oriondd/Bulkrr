@@ -4,6 +4,7 @@ Discovery candidates are metadata only. Adding any title still requires the
 existing Bulkrr review and approval workflow.
 """
 from datetime import date
+import math
 
 
 def normalize_discovery(records, kind):
@@ -32,12 +33,19 @@ def normalize_discovery(records, kind):
             popularity = float(record.get("popularity") or 0)
         except (TypeError, ValueError, OverflowError):
             popularity = 0.0
+        if not math.isfinite(popularity):
+            popularity = 0.0
+        genres = record.get("genres")
+        if not isinstance(genres, list):
+            genres = []
+        genres = [genre.strip()[:80] for genre in genres[:20] if isinstance(genre, str) and genre.strip()]
         result.append({
             "title": title,
             "type": kind,
             "year": year,
             "overview": str(record.get("overview") or "")[:1000],
             "popularity": popularity,
+            "genres": genres,
             "release_date": raw_date if isinstance(raw_date, str) else "",
         })
     return result
