@@ -35,6 +35,16 @@ jobs:
       - name: Smoke-test Windows desktop startup
         shell: pwsh
         run: python tests/smoke_desktop.py
+      - name: Check cinematic splash asset
+        shell: pwsh
+        run: |
+          if (Test-Path "Bulkrr-splash.mp4") {
+            $size = (Get-Item "Bulkrr-splash.mp4").Length
+            if ($size -lt 100000) { throw "Bulkrr-splash.mp4 is unexpectedly small ($size bytes)" }
+            Write-Host "Cinematic intro found ($size bytes); including it in the Windows preview."
+          } else {
+            Write-Warning "Bulkrr-splash.mp4 is not in the repository; the installer will use the static splash."
+          }
       - name: Package Windows preview
         shell: pwsh
         run: |
