@@ -382,6 +382,41 @@ class MainWindowSmokeTests(unittest.TestCase):
         self.assertEqual(api.call_args.args[4]["qualityProfileId"], 7)
         self.assertFalse(api.call_args.args[4]["addOptions"]["searchForMovie"])
 
+    def test_routed_preview_rejection_never_starts_import(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.pending_routed_import = {"batches": [], "credentials": {}}
+                        with patch.object(bulkrr.QMessageBox, "question",
+                                          return_value=bulkrr.QMessageBox.StandardButton.No) as ask:
+                            with patch.object(window, "run_worker") as worker:
+                                window.routed_import_previewed([
+                                    {"action": "add", "error": None}])
+                        ask.assert_called_once()
+                        worker.assert_not_called()
+                        self.assertIsNone(window.pending_routed_import)
+                    finally:
+                        window.close()
+
+    def test_routed_preview_all_existing_never_requests_approval(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.pending_routed_import = {"batches": [], "credentials": {}}
+                        with patch.object(bulkrr.QMessageBox, "question") as ask:
+                            with patch.object(bulkrr.QMessageBox, "information") as notice:
+                                window.routed_import_previewed([
+                                    {"action": "skip", "error": None}])
+                        ask.assert_not_called()
+                        notice.assert_called_once()
+                        self.assertIsNone(window.pending_routed_import)
+                    finally:
+                        window.close()
+
     def test_routed_import_search_flag_enabled_after_approval(self):
         batch = {"profile": {"id": "films", "kind": "radarr",
                              "url": "http://films:7878"},
