@@ -1390,6 +1390,27 @@ class Main(QMainWindow):
         status_layout.addWidget(self.dashboard_radarr)
         status_layout.addWidget(self.dashboard_sonarr)
         dashboard_layout.addWidget(dashboard_status)
+        dashboard_layout.addWidget(QLabel("Library overview"))
+        overview_row = QHBoxLayout()
+        for heading, attr in (
+            ("Movies missing", "dashboard_missing_movies"),
+            ("Episodes missing", "dashboard_missing_episodes"),
+            ("Series with gaps", "dashboard_series_gaps"),
+            ("Upgrade candidates", "dashboard_upgrades"),
+        ):
+            card = QGroupBox(heading)
+            card_layout = QVBoxLayout(card)
+            value = QLabel("—")
+            value.setObjectName("dashboardMetric")
+            value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            card_layout.addWidget(value)
+            setattr(self, attr, value)
+            overview_row.addWidget(card)
+        dashboard_layout.addLayout(overview_row)
+        self.dashboard_scan = QPushButton("Refresh library overview")
+        self.dashboard_scan.setObjectName("secondaryAction")
+        self.dashboard_scan.clicked.connect(self.scan_library)
+        dashboard_layout.addWidget(self.dashboard_scan)
         dashboard_layout.addWidget(QLabel("Start exploring"))
         quick_actions = QHBoxLayout()
         for title, destination in (
@@ -1437,6 +1458,10 @@ class Main(QMainWindow):
         self.library_entries = rows
         self.library_genres = data.get("genres", [])
         self.library_counts = (len(data["movies"]), sum(show["missing"] for show in data["series"]))
+        self.dashboard_missing_movies.setText(str(len(data["movies"])))
+        self.dashboard_missing_episodes.setText(str(sum(show["missing"] for show in data["series"])))
+        self.dashboard_series_gaps.setText(str(len(data["series"])))
+        self.dashboard_upgrades.setText(str(len(data.get("upgrades", []))))
         if data.get("errors"):
             QMessageBox.warning(self, "Incomplete library scan", "\n".join(data["errors"]))
         self.update_storage_estimate()
