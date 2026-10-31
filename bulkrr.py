@@ -1152,6 +1152,38 @@ class Main(QMainWindow):
             self._ranking_discovery = False
         self.logmsg(f"Locally ranked {len(ranked)} discovery titles using library genre metadata")
 
+    def filter_discovery_genre(self):
+        records = getattr(self, "discover_source_records", [])
+        genre = self.genre_filter.text().strip().casefold()
+        if not records:
+            QMessageBox.information(self, "No discovery results", "Discover titles first.")
+            return
+        if not genre:
+            QMessageBox.information(self, "Genre required", "Enter a genre to filter by.")
+            return
+        filtered = [
+            entry for entry in records
+            if isinstance(entry.get("genres"), list)
+            and any(isinstance(value, str) and genre in value.casefold()
+                    for value in entry["genres"])
+        ]
+        self._ranking_discovery = True
+        try:
+            self.discovered(filtered)
+        finally:
+            self._ranking_discovery = False
+        self.logmsg(f"Filtered {len(filtered)} titles by genre; original results retained")
+
+    def reset_discovery_filter(self):
+        records = getattr(self, "discover_source_records", [])
+        if not records:
+            return
+        self._ranking_discovery = True
+        try:
+            self.discovered(records)
+        finally:
+            self._ranking_discovery = False
+
     def queue_discovered(self):
         records = getattr(self, "discover_records", [])
         selected = [records[index.row()] for index in self.discover_results.selectionModel().selectedRows() if index.row() < len(records)]
