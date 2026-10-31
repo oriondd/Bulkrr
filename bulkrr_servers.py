@@ -28,6 +28,9 @@ def validate_profiles(profiles):
             raise ValueError("Invalid server kind")
         if not isinstance(url, str) or not url.startswith(("http://", "https://")):
             raise ValueError("Invalid server URL")
+        parsed = urlsplit(url)
+        if not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise ValueError("Server URL must contain a host and no credentials or query")
         if any(character in url for character in ("@", "\n", "\r", "\t")):
             raise ValueError("Credentials and control characters are not permitted in URLs")
         seen.add(identifier)
