@@ -1178,16 +1178,6 @@ class Main(QMainWindow):
         else:
             QMessageBox.information(self, "Up to date", "No newer stable GitHub release found.")
 
-    def persist_extra_profiles(self):
-        try:
-            saved = dict(self.settings)
-            saved["extra_profiles"] = validate_profiles(self.extra_profiles)
-            APPDIR.mkdir(parents=True, exist_ok=True)
-            SETTINGS.write_text(json.dumps(saved, indent=2), encoding="utf-8")
-            self.settings = saved
-        except (OSError, ValueError) as exc:
-            QMessageBox.warning(self, "Could not save server profiles", str(exc))
-
     def refresh_extra_list(self):
         if not hasattr(self, "extra_list"):
             return
