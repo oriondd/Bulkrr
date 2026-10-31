@@ -880,10 +880,14 @@ class Main(QMainWindow):
         workspace.setSpacing(12)
         self.navigation = QListWidget()
         self.navigation.setObjectName("mainNavigation")
-        self.navigation.setFixedWidth(176)
+        self.navigation.setMinimumWidth(172)
+        self.navigation.setMaximumWidth(220)
+        self.navigation.setSpacing(3)
         self.navigation.addItems(["Connections", "Import & Review", "Library", "Discover", "Activity Log"])
+        self.navigation.setToolTip("Choose a workspace. Import & Review is the primary workflow.")
         workspace.addWidget(self.navigation)
         tabs = QTabWidget()
+        tabs.setObjectName("workspaceTabs")
         tabs.tabBar().hide()
         workspace.addWidget(tabs, 1)
         shell_layout.addLayout(workspace, 1)
@@ -1246,6 +1250,11 @@ class Main(QMainWindow):
         )
         tabs.addTab(self.log, "Activity log")
         self.tabs = tabs
+        # Keep dense pages usable without relying on hidden tab navigation.
+        for page_index in range(tabs.count()):
+            page = tabs.widget(page_index)
+            if isinstance(page, QWidget):
+                page.setMinimumWidth(0)
         self.navigation.setCurrentRow(1)
         self.statusBar().showMessage("Connect to Radarr/Sonarr to begin")
         self.setStyleSheet(DARK_THEME)
