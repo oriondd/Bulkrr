@@ -1317,7 +1317,11 @@ class Main(QMainWindow):
         self.connections = {}
         self.server_data = {}
         self.items = []
+        self.library_entries = []
+        self.library_counts = (0, 0)
         self.refresh()
+        for combo in self.combo.values():
+            combo.clear()
         for app in ("radarr", "sonarr"):
             url = self.url[app].text().strip().rstrip("/")
             key = self.key[app].text().strip()
