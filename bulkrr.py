@@ -879,12 +879,15 @@ class Main(QMainWindow):
         tabs.addTab(importer, "2. Import & review")
         library_page = QWidget()
         library_layout = QVBoxLayout(library_page)
-        library_layout.addWidget(QLabel("Read-only inventory of missing movies and TV episodes. No searches or changes are made."))
+        library_layout.addWidget(QLabel("Read-only inventory of missing titles and below-cutoff Radarr movie files. Searches require confirmation."))
         self.library_scan_btn = QPushButton("Scan connected libraries")
         self.library_scan_btn.clicked.connect(self.scan_library)
         self.library_search_btn = QPushButton("Search selected missing titles")
         self.library_search_btn.clicked.connect(self.search_missing)
         library_layout.addWidget(self.library_search_btn)
+        self.library_upgrade_btn = QPushButton("Search selected Radarr quality upgrades")
+        self.library_upgrade_btn.clicked.connect(self.search_upgrades)
+        library_layout.addWidget(self.library_upgrade_btn)
         library_layout.addWidget(self.library_scan_btn)
         self.library_summary = QLabel("Connect to Radarr/Sonarr, then scan.")
         sizes = QHBoxLayout()
@@ -902,8 +905,8 @@ class Main(QMainWindow):
         library_layout.addWidget(self.storage_estimate)
         self.movie_size.editingFinished.connect(self.update_storage_estimate)
         self.episode_size.editingFinished.connect(self.update_storage_estimate)
-        self.library_layout_table = QTableWidget(0, 5)
-        self.library_layout_table.setHorizontalHeaderLabels(["Server", "Title", "Year", "Missing", "Monitored"])
+        self.library_layout_table = QTableWidget(0, 6)
+        self.library_layout_table.setHorizontalHeaderLabels(["Server", "Title", "Year", "Status", "Missing", "Monitored"])
         self.library_layout_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         library_layout.addWidget(self.library_summary)
         library_layout.addWidget(self.library_layout_table)
@@ -969,6 +972,7 @@ class Main(QMainWindow):
         self.library_scan_btn.setEnabled(True)
         rows = [("Radarr", m, "1") for m in data["movies"]]
         rows += [("Sonarr", s, str(s["missing"])) for s in data["series"]]
+        rows += [("Radarr", m, "—") for m in data.get("upgrades", [])]
         self.library_entries = rows
         self.library_counts = (len(data["movies"]), sum(show["missing"] for show in data["series"]))
         if data.get("errors"):
@@ -978,11 +982,12 @@ class Main(QMainWindow):
         self.library_layout_table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.library_layout_table.setRowCount(len(rows))
         for row, (app, entry, count) in enumerate(rows):
-            for col, value in enumerate((app, entry["title"], entry.get("year") or "—", count, "Yes" if entry["monitored"] else "No")):
+            for col, value in enumerate((app, entry["title"], entry.get("year") or "—", "Upgrade" if entry.get("status") == "upgrade" else "Missing", count, "Yes" if entry["monitored"] else "No")):
                 cell = QTableWidgetItem(str(value))
                 cell.setFlags(cell.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 self.library_layout_table.setItem(row, col, cell)
         summary = f"{len(data['movies'])} missing movies; {sum(s['missing'] for s in data['series'])} missing episodes across {len(data['series'])} shows"
+        summary += f"; {len(data.get('upgrades', []))} Radarr movies below quality cutoff"
         if data["errors"]:
             summary += " | Errors: " + "; ".join(data["errors"])
         self.library_summary.setText(summary)
@@ -1103,7 +1108,7 @@ class Main(QMainWindow):
             if row >= len(getattr(self, "library_entries", [])):
                 continue
             app, entry, _ = self.library_entries[row]
-            if entry.get("monitored") and type(entry.get("id")) is int:
+            if entry.get("status") != "upgrade" and entry.get("monitored") and type(entry.get("id")) is int:
                 selected[app.lower()].append(entry["id"])
         count = sum(len(ids) for ids in selected.values())
         if not count or count > 500:
