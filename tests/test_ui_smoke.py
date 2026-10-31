@@ -512,6 +512,31 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_import_refuses_approval_when_analysis_is_unfinished(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.settings = {"search": True}
+                        window.server_data = {"connected": True}
+                        window.items = [
+                            {"input": "movie: Ready", "status": "ready", "selected": 0,
+                             "matches": [{"label": "Ready", "type": "movie", "app": "radarr",
+                                          "data": {"title": "Ready"}}], "message": "Ready"},
+                            {"input": "movie: Pending", "status": "review", "selected": -1,
+                             "matches": [], "message": "Analysis stopped before lookup"},
+                        ]
+                        with patch.object(bulkrr.QMessageBox, "warning") as warning:
+                            with patch.object(bulkrr.QMessageBox, "question") as approval:
+                                with patch.object(window, "run_worker") as worker:
+                                    window.import_items()
+                                    warning.assert_called_once()
+                                    approval.assert_not_called()
+                                    worker.assert_not_called()
+                    finally:
+                        window.close()
+
     def test_import_uses_current_search_checkbox_without_saving(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
