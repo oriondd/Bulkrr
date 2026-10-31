@@ -1260,6 +1260,7 @@ class Main(QMainWindow):
         self.items = []
         self.library_entries = []
         self.library_counts = (0, 0)
+        self.library_genres = []
         if hasattr(self, "library_layout_table"):
             self.library_layout_table.setRowCount(0)
         if hasattr(self, "library_summary"):
@@ -1271,6 +1272,7 @@ class Main(QMainWindow):
         for app in self.connections:
             self.connection_leds[app].set_status("disconnected")
             self.connection_labels[app].setText("Connection failed — see Activity log")
+        self.connections = {}
 
     def load_extension(self):
         folder = APPDIR / "extensions"
@@ -1395,6 +1397,7 @@ class Main(QMainWindow):
         self.items = []
         self.library_entries = []
         self.library_counts = (0, 0)
+        self.library_genres = []
         self.library_layout_table.setRowCount(0)
         self.library_summary.setText("Reconnect and scan to refresh library inventory")
         self.update_storage_estimate()
@@ -1456,6 +1459,7 @@ class Main(QMainWindow):
         self.items = []
         self.library_entries = []
         self.library_counts = (0, 0)
+        self.library_genres = []
         if hasattr(self, "library_layout_table"):
             self.library_layout_table.setRowCount(0)
         if hasattr(self, "library_summary"):
