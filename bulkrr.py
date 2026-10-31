@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
     QSplitter,
     QSplashScreen,
     QFileDialog,
+    QInputDialog,
 )
 
 from bulkrr_paths import config_dir
