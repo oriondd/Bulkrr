@@ -37,8 +37,8 @@ This branch combines Phase 3 (library management), Phase 4 (discovery), and Phas
 ## Remaining limitations before release
 
 - Sonarr episode-level quality upgrade identification is not yet implemented.
-- Trending movie/TV ranking requires a reliable live data source; title lookup
-  is not presented as trending.
+- TMDB trending movie/TV provider and tests are implemented, but its UI
+  connection is not yet integrated; the read access token must remain private.
 - Local recommendations use only genre frequencies in connected library
   metadata; viewing history and playback activity are not collected.
 - Franchise matching is title-based, not authoritative TMDB collection lookup.
