@@ -1,45 +1,58 @@
 """Bulkrr's centralized Qt stylesheet, independent of application logic."""
 
 DARK_THEME = """
-QMainWindow, QWidget { background: #111521; color: #e9eefb; font-size: 13px; }
-QMainWindow { background: #0d111b; }
+QMainWindow, QWidget { background: #0b101b; color: #e8edf9; font-size: 13px; }
+QMainWindow { background: #080d16; }
+QLabel { background: transparent; }
+QLabel#appTitle { color: #ffffff; font-size: 27px; font-weight: 800; }
+QLabel#appSubtitle { color: #a9b6d3; font-size: 12px; }
+QWidget#appHeader { background: #10192a; border-bottom: 1px solid #273653; }
 QLineEdit, QTextEdit, QComboBox, QTableWidget, QListWidget {
-    background: #1a2130; color: #f2f5ff;
-    border: 1px solid #344056; border-radius: 8px; padding: 8px;
-    selection-background-color: #624bc3;
+    background: #131d2d; color: #f2f5ff;
+    border: 1px solid #2c3b55; border-radius: 9px; padding: 8px;
+    selection-background-color: #5746b7;
 }
-QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QListWidget:focus {
-    border: 1px solid #8c79ed;
+QLineEdit:focus, QTextEdit:focus, QComboBox:focus, QListWidget:focus, QTableWidget:focus {
+    border: 1px solid #947cff;
 }
 QPushButton {
-    background: #6652c9; color: white; border: 1px solid #7764dc;
+    background: #6d57df; color: #fff; border: 1px solid #8976ed;
     border-radius: 8px; padding: 10px 14px; font-weight: 600;
 }
-QPushButton:hover { background: #7967df; }
-QPushButton:pressed { background: #4d3ba5; }
-QPushButton:disabled { background: #323a4d; border-color: #323a4d; color: #8c96aa; }
+QPushButton:hover { background: #806cf0; }
+QPushButton:pressed { background: #5141b4; }
+QPushButton:disabled { background: #273246; border-color: #273246; color: #8895ac; }
+QPushButton#secondaryAction { background: #172238; border-color: #364665; }
+QPushButton#secondaryAction:hover { background: #243451; }
+QPushButton#dangerAction { background: #a52d42; border-color: #cc445c; }
+QPushButton#dangerAction:hover { background: #c33a51; }
 QGroupBox {
-    border: 1px solid #354158; border-radius: 10px;
-    margin-top: 16px; padding: 14px; font-weight: 600;
+    background: #101827; border: 1px solid #293750; border-radius: 12px;
+    margin-top: 17px; padding: 16px; font-weight: 600;
 }
-QGroupBox::title { subcontrol-origin: margin; left: 14px; padding: 0 6px; }
-QTabWidget::pane { border: 0; }
+QGroupBox::title { subcontrol-origin: margin; left: 14px; padding: 0 6px; color: #b39aff; }
+QTabWidget::pane { border: 1px solid #26334a; border-radius: 10px; background: #0d1421; }
 QTabBar::tab {
-    background: #1c2434; color: #aebbd2; border: 0;
-    padding: 13px 20px; margin-right: 3px;
+    background: #141e30; color: #aebbd2; border: 1px solid #25344e;
+    border-bottom: 0; border-top-left-radius: 8px; border-top-right-radius: 8px;
+    padding: 12px 19px; margin-right: 4px;
 }
-QTabBar::tab:selected { background: #5643b2; color: white; }
-QTabBar::tab:hover:!selected { background: #2c3750; }
+QTabBar::tab:selected { background: #493c9b; color: white; border-color: #8b71f0; }
+QTabBar::tab:hover:!selected { background: #253450; }
 QHeaderView::section {
-    background: #222b3c; color: #c8d4eb; border: 0;
-    border-bottom: 1px solid #354158; padding: 9px; font-weight: 600;
+    background: #1b2940; color: #c8d4eb; border: 0;
+    border-bottom: 1px solid #364661; padding: 10px; font-weight: 600;
 }
-QTableWidget { gridline-color: #2d374b; alternate-background-color: #20293a; }
-QScrollBar:vertical { background: #171e2b; width: 12px; }
-QScrollBar::handle:vertical { background: #46536b; border-radius: 5px; min-height: 28px; }
-QStatusBar { background: #171e2b; color: #b4c3dc; }
+QTableWidget { gridline-color: #28384e; alternate-background-color: #172235; }
+QScrollBar:vertical { background: #111b2b; width: 11px; }
+QScrollBar::handle:vertical { background: #445675; border-radius: 5px; min-height: 28px; }
+QStatusBar { background: #111c2e; color: #b4c3dc; }
 QLabel#reviewSummary {
-    background: #222b40; border: 1px solid #554b94; border-radius: 10px;
+    background: #192640; border: 1px solid #574b9c; border-radius: 10px;
     padding: 14px; color: #e0dafa; font-weight: 600;
+}
+QLabel#categoryPolicy {
+    background: #14243a; color: #b8c9e5; border: 1px solid #34496b;
+    border-radius: 8px; padding: 10px;
 }
 """
