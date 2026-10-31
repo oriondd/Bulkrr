@@ -187,6 +187,32 @@ class ImportLibraryCacheTests(unittest.TestCase):
                 self.assertIn("Invalid existing library ID", output[0][0][2])
                 self.assertFalse(any(method == "POST" for _, _, method in calls))
 
+    def test_sonarr_existing_title_with_invalid_id_cannot_queue_search(self):
+        item = {
+            "input": "Example Series", "selected": 0, "action": "upgrade",
+            "matches": [{
+                "app": "sonarr", "type": "tv", "id": 202,
+                "data": {"title": "Example Series", "tvdbId": 202},
+            }],
+        }
+        worker = bulkrr.Worker(
+            "import", {"sonarr": {"url": "http://example.invalid", "key": "test"}},
+            items=[item],
+            config={"tv_folder": "/tv", "sonarr_profile": 1,
+                    "search": True, "dry_run": False},
+        )
+        calls = []
+        output = []
+        def fake_call(app, endpoint, method="GET", payload=None):
+            calls.append((app, endpoint, method))
+            return [{"tvdbId": 202, "id": "not-a-valid-id"}]
+        worker.call = fake_call
+        worker.finished_data.connect(output.append)
+        worker.run()
+        self.assertEqual(output[0][0][1], "red")
+        self.assertIn("Invalid existing library ID", output[0][0][2])
+        self.assertFalse(any(method == "POST" for _, _, method in calls))
+
     def test_successful_additions_reuse_library_snapshot(self):
         calls, output = self.run_batch([
             {"id": 1, "tmdbId": 101}, {"id": 2, "tmdbId": 102},
