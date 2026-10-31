@@ -18,8 +18,14 @@ class MediaOverviewTests(unittest.TestCase):
     def test_missing_description(self):
         self.assertEqual(clean_media_overview(None), "No synopsis available.")
 
+    def test_nested_entities_and_spacing(self):
+        self.assertEqual(clean_media_overview("One &amp; two&lt;br&gt;Three"), "One & two\nThree")
+
+    def test_discards_style_contents(self):
+        self.assertEqual(clean_media_overview("<style>body{color:red}</style>Story"), "Story")
+
     def test_strips_untrusted_markup(self):
-        self.assertEqual(clean_media_overview("<b>Action</b> <script>ignored</script>"), "Action ignored")
+        self.assertEqual(clean_media_overview("<b>Action</b> <script>ignored</script>"), "Action")
 
 
 if __name__ == "__main__":
