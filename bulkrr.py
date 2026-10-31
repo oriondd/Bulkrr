@@ -1079,6 +1079,47 @@ class Main(QMainWindow):
         self.discover_button.setEnabled(False)
         self.run_worker("discover", config={"kind": self.discover_kind.currentText(), "term": term}, done=self.discovered)
 
+    def search_tmdb_collections(self):
+        if self.worker and self.worker.isRunning():
+            return
+        term, accepted = QInputDialog.getText(
+            self, "Find TMDB collection", "Collection name (e.g. Spider-Man):",
+        )
+        if not accepted or not term.strip():
+            return
+        access_token, accepted = QInputDialog.getText(
+            self, "TMDB collection search",
+            "Enter your TMDB API read access token (not saved):",
+            QLineEdit.EchoMode.Password,
+        )
+        if not accepted or not access_token.strip():
+            return
+        self.tmdb_collection_search_button.setEnabled(False)
+        self.run_worker(
+            "tmdb_collection_search",
+            config={"term": term.strip(), "access_token": access_token.strip()},
+            done=self.tmdb_collections_found,
+        )
+
+    def tmdb_collections_found(self, records):
+        if not records:
+            QMessageBox.information(self, "No TMDB collections", "No matching collections were found.")
+            return
+        labels = [f"{item['name']} (TMDB ID: {item['id']})" for item in records]
+        choice, accepted = QInputDialog.getItem(
+            self, "TMDB collections", "Select a collection to view its ID:",
+            labels, 0, False,
+        )
+        if not accepted:
+            return
+        index = labels.index(choice)
+        selected = records[index]
+        QMessageBox.information(
+            self, "Verified TMDB collection",
+            f"{selected['name']}\\nTMDB collection ID: {selected['id']}\\n"
+            "Use 'Explore a verified TMDB movie collection by ID' to retrieve its films.",
+        )
+
     def load_tmdb_collection(self):
         if self.worker and self.worker.isRunning():
             return
