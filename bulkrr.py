@@ -3067,6 +3067,8 @@ class Main(QMainWindow):
             or item["matches"][item["selected"]].get("type") not in ("movie", "series", "anime")
             or not isinstance(item["matches"][item["selected"]].get("data"), dict)
             or not str(item["matches"][item["selected"]].get("id") or "").strip()
+            or not str(item["matches"][item["selected"]].get("id") or "").isdigit()
+            or int(item["matches"][item["selected"]].get("id") or 0) <= 0
             or not str(
                 item["matches"][item["selected"]].get("data", {}).get("title") or ""
             ).strip()
