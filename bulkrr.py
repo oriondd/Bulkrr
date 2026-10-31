@@ -66,6 +66,7 @@ from bulkrr_servers import validate_profiles, legacy_profiles
 from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
 from bulkrr_calendar import fetch_schedule
+from bulkrr_collections import expand_collection
 
 
 class PosterWorker(QThread):
@@ -143,6 +144,12 @@ class Worker(QThread):
                         f"{app.title()} connected (v{info.get('version','?')})."
                     )
                 self.finished_data.emit(result)
+            elif self.task == "collection_lookup":
+                if "radarr" not in self.connections:
+                    raise ValueError("Connect to Radarr to expand a movie franchise")
+                term = urllib.parse.quote(self.config["term"])
+                matches = self.call("radarr", f"movie/lookup?term={term}")
+                self.finished_data.emit(expand_collection(matches[:100]))
             elif self.task == "release_calendar":
                 self.finished_data.emit(fetch_schedule())
             elif self.task == "discover":
@@ -902,6 +909,9 @@ class Main(QMainWindow):
         self.discover_add = QPushButton("Add selected titles to import review")
         self.discover_add.clicked.connect(self.queue_discovered)
         discover_layout.addWidget(self.discover_add)
+        collection_btn = QPushButton("Find franchise movies by title")
+        collection_btn.clicked.connect(self.find_collection)
+        discover_layout.addWidget(collection_btn)
         calendar_btn = QPushButton("Load today's US TV release calendar")
         calendar_btn.clicked.connect(self.load_calendar)
         discover_layout.addWidget(calendar_btn)
@@ -949,6 +959,28 @@ class Main(QMainWindow):
             summary += " | Errors: " + "; ".join(data["errors"])
         self.library_summary.setText(summary)
         self.logmsg("Library inventory: " + summary)
+
+    def find_collection(self):
+        if self.worker and self.worker.isRunning():
+            return
+        term = self.discover_query.text().strip()
+        if not term:
+            QMessageBox.information(self, "Franchise search", "Enter a franchise name in the search box first.")
+            return
+        self.run_worker("collection_lookup", config={"term": term}, done=self.collection_found)
+
+    def collection_found(self, titles):
+        if not titles:
+            QMessageBox.information(self, "No results", "No franchise candidates were returned.")
+            return
+        answer = QMessageBox.question(self, "Queue franchise candidates", f"Queue {len(titles)} matching movie titles for manual review? Search results may include unrelated movies.", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        combined = normalize_titles(self.input.toPlainText().splitlines() + titles)
+        self.input.setPlainText("\n".join(combined))
+        self.items = []
+        self.refresh()
+        self.tabs.setCurrentIndex(1)
 
     def load_calendar(self):
         if self.worker and self.worker.isRunning():
