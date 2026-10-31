@@ -1091,13 +1091,19 @@ class Main(QMainWindow):
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setMinimumHeight(270)
         self.table.setToolTip("Select to inspect metadata; double-click a title to review or correct its match.")
-        self.table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
-        self.table.horizontalHeader().setSectionResizeMode(
-            0, QHeaderView.ResizeMode.Fixed
-        )
-        self.table.setColumnWidth(0, 55)
+        # Keep short metadata columns compact so title text gets the space.
+        review_header = self.table.horizontalHeader()
+        review_header.setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        review_header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        review_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        review_header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.table.setColumnWidth(0, 40)
+        self.table.setColumnWidth(3, 82)
+        self.table.setColumnWidth(4, 118)
+        self.table.setColumnWidth(5, 105)
+        self.table.setColumnWidth(6, 145)
+        self.table.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.table.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.itemSelectionChanged.connect(self.show_selected_poster)
         self.table.itemSelectionChanged.connect(self.update_review_actions)
@@ -1118,6 +1124,7 @@ class Main(QMainWindow):
         self.preview_info.setWordWrap(True)
         self.preview_info.setAlignment(Qt.AlignmentFlag.AlignTop)
         preview_layout.addWidget(self.preview_info, 1)
+        preview.setMinimumHeight(190)
         v.addWidget(preview)
         row = QHBoxLayout()
         self.duplicate_btn = QPushButton("Existing title: Skip / Upgrade / Replace")
