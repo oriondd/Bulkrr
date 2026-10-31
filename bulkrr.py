@@ -1060,7 +1060,8 @@ class Main(QMainWindow):
                 QMessageBox.warning(self, "Error", e),
             )
         )
-        self.worker.finished_data.connect(done)
+        if done is not None:
+            self.worker.finished_data.connect(done)
         self.worker.finished.connect(self.update_review_actions)
         if task == "library_scan":
             self.worker.finished.connect(lambda: self.library_scan_btn.setEnabled(True))
@@ -1087,6 +1088,16 @@ class Main(QMainWindow):
                 webbrowser.open(release["url"])
         else:
             QMessageBox.information(self, "Up to date", "No newer stable GitHub release found.")
+
+    def persist_extra_profiles(self):
+        try:
+            saved = dict(self.settings)
+            saved["extra_profiles"] = validate_profiles(self.extra_profiles)
+            APPDIR.mkdir(parents=True, exist_ok=True)
+            SETTINGS.write_text(json.dumps(saved, indent=2), encoding="utf-8")
+            self.settings = saved
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Could not save server profiles", str(exc))
 
     def refresh_extra_list(self):
         if not hasattr(self, "extra_list"):
@@ -1135,6 +1146,7 @@ class Main(QMainWindow):
             return
         self.extra_profiles.append(profile)
         self.refresh_extra_list()
+        self.persist_extra_profiles()
 
     def activate_extra_server(self):
         row = self.extra_list.currentRow()
@@ -1165,6 +1177,7 @@ class Main(QMainWindow):
         except Exception:
             pass
         self.refresh_extra_list()
+        self.persist_extra_profiles()
 
     def connect_servers(self):
         self.connections = {}
