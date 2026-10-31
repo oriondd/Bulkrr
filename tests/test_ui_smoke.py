@@ -485,6 +485,29 @@ class MainWindowSmokeTests(unittest.TestCase):
         self.assertEqual(results[0][0]["status"], "added")
         self.assertTrue(api.call_args.args[4]["addOptions"]["searchForMissingEpisodes"])
 
+    def test_selected_row_exclusion_is_preview_only(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "Movie A", "status": "ready", "action": "add",
+                             "matches": [], "selected": -1},
+                            {"input": "Movie B", "status": "ready", "action": "add",
+                             "matches": [], "selected": -1},
+                        ]
+                        window.refresh()
+                        window.table.selectRow(0)
+                        with patch.object(bulkrr.QMessageBox, "question",
+                                          return_value=bulkrr.QMessageBox.StandardButton.Yes):
+                            window.skip_selected_rows()
+                        self.assertEqual(window.items[0]["status"], "skipped")
+                        self.assertEqual(window.items[0]["action"], "skip")
+                        self.assertEqual(window.items[1]["status"], "ready")
+                    finally:
+                        window.close()
+
     def test_review_filters_and_sidebar_navigation(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
