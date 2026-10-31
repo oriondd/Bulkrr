@@ -21,6 +21,21 @@ class TrendingTests(unittest.TestCase):
         self.assertEqual(records[0]["genres"], ["Horror", "Mystery"])
         self.assertEqual(records[1]["title"], "Another")
 
+    def test_cover_art_url_validation(self):
+        payload = {"data": {"Page": {"media": [
+            {"title": {"english": "Valid Cover"},
+             "coverImage": {"large": "https://s4.anilist.co/file/anilistcdn/media/anime/cover/test.jpg"}},
+            {"title": {"english": "Invalid Host"},
+             "coverImage": {"large": "https://example.com/cover.jpg"}},
+            {"title": {"english": "Malformed Cover"},
+             "coverImage": {"large": ["not", "a", "url"]}},
+        ]}}}
+        records = parse_trending(payload)
+        self.assertEqual(len(records), 3)
+        self.assertTrue(records[0]["poster_url"].startswith("https://s4.anilist.co/"))
+        self.assertIsNone(records[1]["poster_url"])
+        self.assertIsNone(records[2]["poster_url"])
+
     def test_invalid_payloads(self):
         for payload in ({}, {"errors": [{"message": "Rate limit"}]},
                         {"data": {"Page": {"media": "wrong"}}}):
