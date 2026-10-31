@@ -1123,6 +1123,35 @@ class Main(QMainWindow):
         if answer == QMessageBox.StandardButton.Yes:
             self.run_worker("bulk_search", config=selected, done=self.bulk_search_done)
 
+    def search_upgrades(self):
+        if self.worker and self.worker.isRunning():
+            return
+        selected = []
+        for index in self.library_layout_table.selectionModel().selectedRows():
+            row = index.row()
+            if row >= len(getattr(self, "library_entries", [])):
+                continue
+            app, entry, _ = self.library_entries[row]
+            if (app == "Radarr" and entry.get("status") == "upgrade"
+                    and entry.get("monitored") and type(entry.get("id")) is int):
+                selected.append(entry["id"])
+        if not selected or len(selected) > 500:
+            QMessageBox.information(
+                self, "Selection required",
+                "Select 1–500 monitored Radarr movie rows marked Upgrade."
+            )
+            return
+        answer = QMessageBox.question(
+            self, "Confirm quality upgrade search",
+            f"Ask Radarr to search {len(selected)} movies with files below their configured quality cutoff? "
+            "Radarr decides which releases qualify and may download replacements, consume storage, "
+            "and remove replaced files according to its settings.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self.run_worker("bulk_search", config={"radarr": selected}, done=self.bulk_search_done)
+
     def bulk_search_done(self, result):
         message = f"Queued {result['queued']} search commands."
         if result["errors"]:
