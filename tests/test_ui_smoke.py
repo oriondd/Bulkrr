@@ -698,6 +698,31 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_import_results_only_modify_approved_rows(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "movie: Unapproved", "status": "ready",
+                             "matches": [], "selected": -1, "message": "Keep"},
+                            {"input": "movie: Approved", "status": "working",
+                             "matches": [], "selected": -1, "message": "Queued"},
+                        ]
+                        window.active_import_rows = [1]
+                        window.active_dry_run = False
+                        window.imported([
+                            ("movie: Unapproved", "green", "Should ignore"),
+                            ("movie: Approved", "green", "Added"),
+                        ])
+                        self.assertEqual(window.items[0]["status"], "ready")
+                        self.assertEqual(window.items[0]["message"], "Keep")
+                        self.assertEqual(window.items[1]["status"], "done")
+                        self.assertEqual(window.active_import_rows, [])
+                    finally:
+                        window.close()
+
     def test_import_worker_failure_marks_only_queued_rows_failed(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
