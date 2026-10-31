@@ -535,6 +535,25 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_failed_title_recheck_is_not_left_processing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [{
+                            "input": "movie: Corrected", "status": "working",
+                            "action": "review", "matches": [], "selected": -1,
+                            "message": "Rechecking corrected title",
+                        }]
+                        window._edit_recheck_row = 0
+                        window.edited_title_failed("Network unavailable")
+                        self.assertEqual(window.items[0]["status"], "error")
+                        self.assertEqual(window.items[0]["action"], "review")
+                        self.assertEqual(window._edit_recheck_row, -1)
+                    finally:
+                        window.close()
+
     def test_empty_single_title_recheck_does_not_leave_working_row(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
