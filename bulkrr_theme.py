@@ -3,6 +3,10 @@
 DARK_THEME = """
 QMainWindow, QWidget { background: #0b101b; color: #e8edf9; font-size: 13px; }
 QLabel#dashboardHero { font-size: 30px; font-weight: 800; color: #f5f7ff; padding: 14px 2px 4px 2px; }
+QTableWidget#reviewResults { background: #101929; alternate-background-color: #152035; border: 1px solid #2a3b56; border-radius: 10px; selection-background-color: #2c3e70; selection-color: #ffffff; }
+QTableWidget#reviewResults::item { padding: 8px 7px; border-bottom: 1px solid #25344d; }
+QTableWidget#reviewResults::item:selected { background: #2c3e70; }
+QLabel#reviewDetailStatus { background: #18263b; border: 1px solid #344b6a; border-radius: 7px; padding: 10px; color: #d8e5ff; font-weight: 600; }
 QLabel#dashboardMetric { font-size: 32px; font-weight: 800; color: #f5f7ff; padding: 12px 6px; }
 QLabel#catalogHeading { font-size: 19px; font-weight: 750; color: #f4f6ff; padding: 4px 0; }
 QLabel#detailTitle { font-size: 19px; font-weight: 750; color: #f4f6ff; }
