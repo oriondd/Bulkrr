@@ -578,6 +578,25 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_review_filter_skips_redundant_visibility_changes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "movie: One", "status": "ready",
+                             "matches": [], "selected": -1, "message": "Ready"},
+                            {"input": "movie: Two", "status": "skipped",
+                             "matches": [], "selected": -1, "message": "Skipped"},
+                        ]
+                        window.refresh()
+                        with patch.object(window.table, "setRowHidden", wraps=window.table.setRowHidden) as hide:
+                            window.apply_review_filter()
+                            hide.assert_not_called()
+                    finally:
+                        window.close()
+
     def test_progress_updates_existing_row_without_full_table_refresh(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
