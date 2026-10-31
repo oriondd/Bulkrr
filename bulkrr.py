@@ -1254,13 +1254,16 @@ class Main(QMainWindow):
         self.server_data = {}
         self.items = []
         self.library_entries = []
-        self.settings.pop("movie_folder", None)
-        self.settings.pop("tv_folder", None)
-        self.settings.pop("radarr_profile", None)
-        self.settings.pop("sonarr_profile", None)
+        for setting in ("movie_folder", "tv_folder", "anime_folder", "radarr_profile", "sonarr_profile"):
+            self.settings.pop(setting, None)
         self.refresh()
         self.url[app].setText(profile["url"])
         self.key[app].setText(secret)
+        for name, combo in self.combo.items():
+            combo.clear()
+        for name in self.connection_labels:
+            self.connection_labels[name].setText("Reconnect required")
+            self.connection_leds[name].set_status("unconfigured")
         self.logmsg(f"Selected {app.title()} profile: {profile['label']}. Test connections to activate.")
         self.statusBar().showMessage("Server changed — reconnect and review destinations before importing")
 
