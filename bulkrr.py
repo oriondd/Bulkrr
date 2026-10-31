@@ -3023,7 +3023,7 @@ class Main(QMainWindow):
         duplicate_inputs = set()
         seen_inputs = set()
         for item in pending:
-            key = str(item.get("input", "")).strip().casefold()
+            key = " ".join(str(item.get("input", "")).split()).casefold()
             if key in seen_inputs:
                 duplicate_inputs.add(key)
             seen_inputs.add(key)
