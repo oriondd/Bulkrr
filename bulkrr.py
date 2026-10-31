@@ -1006,19 +1006,18 @@ class Main(QMainWindow):
         tabs.addTab(setup, "1. Connect & configure")
         importer = QWidget()
         v = QVBoxLayout(importer)
-        v.addWidget(
-            QLabel(
-                "Paste one title per line. Optional prefixes: movie:, tv:, anime:. Year optional: (2012)."
-            )
-        )
+        v.addWidget(QLabel("Bulk Import  /  Add titles → Review matches → Approve"))
+        input_panel = QGroupBox("1. Add titles")
+        input_layout = QVBoxLayout(input_panel)
         self.input = TitleInput()
         self.input.files_dropped.connect(self.import_files)
         self.input.setAcceptDrops(True)
         self.input.setPlaceholderText(
             "movie: The Raid (2011)\ntv: Breaking Bad (2008)\nanime: Death Note (2006)"
         )
-        v.addWidget(QLabel("Drop .txt or .csv files here, or paste titles below."))
-        v.addWidget(self.input)
+        self.input.setMaximumHeight(155)
+        input_layout.addWidget(QLabel("One title per line. Use movie:, tv: or anime: when needed."))
+        input_layout.addWidget(self.input)
         source_rows = [QHBoxLayout(), QHBoxLayout()]
         for index, (label, handler) in enumerate((
             ("Import TXT / CSV", self.choose_import_files),
@@ -1033,7 +1032,7 @@ class Main(QMainWindow):
             source_rows[0 if index < 3 else 1].addWidget(button)
         for source_row in source_rows:
             source_row.addStretch()
-            v.addLayout(source_row)
+            input_layout.addLayout(source_row)
         analysis_actions = QHBoxLayout()
         self.analyze_btn = QPushButton("Analyze titles (no changes)")
         self.analyze_btn.clicked.connect(self.analyze)
@@ -1043,7 +1042,7 @@ class Main(QMainWindow):
         self.stop_analysis_btn.setEnabled(False)
         self.stop_analysis_btn.setObjectName("dangerAction")
         analysis_actions.addWidget(self.stop_analysis_btn, 1)
-        v.addLayout(analysis_actions)
+        input_layout.addLayout(analysis_actions)
         followup_actions = QHBoxLayout()
         self.resume_analysis_btn = QPushButton("Resume remaining analysis")
         self.resume_analysis_btn.setObjectName("secondaryAction")
@@ -1055,7 +1054,8 @@ class Main(QMainWindow):
         self.clear_analysis_btn.setObjectName("secondaryAction")
         self.clear_analysis_btn.setEnabled(False)
         followup_actions.addWidget(self.clear_analysis_btn)
-        v.addLayout(followup_actions)
+        input_layout.addLayout(followup_actions)
+        v.addWidget(input_panel)
         self.category_policy_label = QLabel(
             "Batch rules (preview only): existing = skip | unmatched = exclude | "
             "ambiguous = review. Nothing is sent to Radarr/Sonarr until final approval."
@@ -1063,6 +1063,7 @@ class Main(QMainWindow):
         self.category_policy_label.setWordWrap(True)
         self.category_policy_label.setObjectName("categoryPolicy")
         v.addWidget(self.category_policy_label)
+        v.addWidget(QLabel("2. Review matches"))
         self.review_summary_label = QLabel(review_summary([]))
         self.review_summary_label.setWordWrap(True)
         self.review_summary_label.setObjectName("reviewSummary")
@@ -1134,7 +1135,10 @@ class Main(QMainWindow):
         preview_layout.addWidget(self.preview_info, 1)
         preview.setMinimumHeight(190)
         v.addWidget(preview)
-        row = QHBoxLayout()
+        advanced_review_panel = QGroupBox("Advanced review actions")
+        advanced_review_panel.setCheckable(True)
+        advanced_review_panel.setChecked(False)
+        row = QHBoxLayout(advanced_review_panel)
         self.duplicate_btn = QPushButton("Existing title: Skip / Upgrade / Replace")
         self.duplicate_btn.clicked.connect(self.duplicate_action)
         self.duplicate_btn.setObjectName("secondaryAction")
@@ -1165,7 +1169,8 @@ class Main(QMainWindow):
         self.review_btn.setObjectName("secondaryAction")
         self.add_btn = QPushButton("Approve and import")
         self.add_btn.clicked.connect(self.import_items)
-        v.addLayout(row)
+        v.addWidget(advanced_review_panel)
+        v.addWidget(QLabel("3. Approve import"))
         approval_row = QHBoxLayout()
         approval_row.addStretch()
         approval_row.addWidget(self.review_btn)
@@ -2287,6 +2292,11 @@ class Main(QMainWindow):
 
     def connected(self, data):
         self.server_data = data
+        connected_names = [app.title() for app in ("radarr", "sonarr") if app in data]
+        self.header_status.setText(
+            "●  " + " + ".join(connected_names) + " connected"
+            if connected_names else "●  Connect Radarr / Sonarr to begin"
+        )
         for app in ("radarr", "sonarr"):
             self.connection_labels[app].setText(
                 "Connected and authenticated" if app in data else "Not configured"
