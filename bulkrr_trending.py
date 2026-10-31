@@ -13,6 +13,7 @@ QUERY = """query ($page: Int, $perPage: Int) {
       title { english romaji }
       startDate { year }
       description(asHtml: false)
+      genres
       trending
     }
   }
@@ -53,12 +54,18 @@ def parse_trending(payload):
         score = record.get("trending")
         if type(score) is not int or score < 0:
             score = 0
+        genres = record.get("genres")
+        if not isinstance(genres, list):
+            genres = []
+        genres = [genre.strip()[:80] for genre in genres[:20]
+                  if isinstance(genre, str) and genre.strip()]
         result.append({
             "title": title,
             "type": "anime",
             "year": year,
             "overview": str(record.get("description") or "")[:1000],
             "popularity": score,
+            "genres": genres,
             "release_date": str(year) if year else "",
         })
     return result
