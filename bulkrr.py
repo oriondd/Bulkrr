@@ -1744,6 +1744,20 @@ class Main(QMainWindow):
         self.discover_records = records
         if not getattr(self, "_ranking_discovery", False):
             self.discover_source_records = list(records)
+        # Detach artwork callbacks for cards about to be destroyed.
+        # Otherwise an older network response can target a deleted Qt item.
+        old_cards = {
+            self.discover_results.item(i) for i in range(self.discover_results.count())
+        }
+        old_cards.update(
+            self.dashboard_featured.item(i) for i in range(self.dashboard_featured.count())
+        )
+        for url, targets in list(self.poster_inflight.items()):
+            self.poster_inflight[url] = [
+                target for target in targets if target not in old_cards
+            ]
+            if not self.poster_inflight[url]:
+                del self.poster_inflight[url]
         self.discover_results.clear()
         self.show_discovery_details(-1)
         self.discover_count.setText(f"{len(records)} titles")
@@ -1783,7 +1797,13 @@ class Main(QMainWindow):
         self.start_pending_posters()
 
     def apply_discovery_artwork(self, item, url, data):
-        if not data or (self.discover_results.row(item) < 0 and self.dashboard_featured.row(item) < 0):
+        if not data:
+            return
+        try:
+            if self.discover_results.row(item) < 0 and self.dashboard_featured.row(item) < 0:
+                return
+        except RuntimeError:
+            # Qt may have deleted the underlying item during a catalog refresh.
             return
         pix = QPixmap()
         if pix.loadFromData(data):
