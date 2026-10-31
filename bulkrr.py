@@ -1746,18 +1746,23 @@ class Main(QMainWindow):
             self.discover_source_records = list(records)
         # Detach artwork callbacks for cards about to be destroyed.
         # Otherwise an older network response can target a deleted Qt item.
-        old_cards = {
+        old_cards = [
             self.discover_results.item(i) for i in range(self.discover_results.count())
-        }
-        old_cards.update(
+        ]
+        old_cards.extend(
             self.dashboard_featured.item(i) for i in range(self.dashboard_featured.count())
         )
         for url, targets in list(self.poster_inflight.items()):
-            self.poster_inflight[url] = [
-                target for target in targets if target not in old_cards
+            remaining = [
+                target for target in targets
+                if not any(target is old for old in old_cards)
             ]
-            if not self.poster_inflight[url]:
-                del self.poster_inflight[url]
+            if remaining:
+                self.poster_inflight[url] = remaining
+            else:
+                # Keep an empty entry while the worker is running to prevent
+                # duplicate requests for the same poster on rapid refresh.
+                self.poster_inflight[url] = []
         self.discover_results.clear()
         self.show_discovery_details(-1)
         self.discover_count.setText(f"{len(records)} titles")
