@@ -997,7 +997,7 @@ class Main(QMainWindow):
         self.table.setSortingEnabled(False)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setMinimumHeight(270)
-        self.table.setToolTip("Select a row to inspect its poster and metadata; use Confirm to choose an alternate match.")
+        self.table.setToolTip("Select to inspect metadata; double-click a title to review or correct its match.")
         self.table.horizontalHeader().setSectionResizeMode(
             QHeaderView.ResizeMode.Stretch
         )
@@ -1008,6 +1008,7 @@ class Main(QMainWindow):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.itemSelectionChanged.connect(self.show_selected_poster)
         self.table.itemSelectionChanged.connect(self.update_review_actions)
+        self.table.cellDoubleClicked.connect(self.review_row)
         v.addWidget(self.table)
         preview = QGroupBox("Selected title — artwork and metadata")
         preview_layout = QHBoxLayout(preview)
@@ -2580,6 +2581,15 @@ class Main(QMainWindow):
             f"{item.get('message', '')}\n\n{overview}"
         )
         self.fetch_poster(match, self.poster)
+
+    def review_row(self, row, column):
+        """Open the correction dialog directly from the selected review row."""
+        if row < 0 or row >= len(self.items):
+            return
+        if not self.items[row].get("matches"):
+            return
+        self.table.selectRow(row)
+        self.review()
 
     def review(self):
         if self.worker and self.worker.isRunning():
