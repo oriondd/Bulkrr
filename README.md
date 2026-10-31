@@ -15,6 +15,14 @@ A Windows desktop companion for organizing large media wish lists, reviewing tit
 > [!IMPORTANT]
 > **Beta software:** Bulkrr is under active development. Review matches and destinations carefully before importing. Test with a small batch first.
 
+## Bulkrr 2.0 cinematic intro (development branch)
+
+The Windows preview supports an optional **5-second cinematic MP4 startup video**. To include it in the installer, add the video to the **repository root** with the exact filename `Bulkrr-splash.mp4` (capitalization matters). GitHub's **Add file → Upload files** option supports this for files under its browser upload limit.
+
+The manually triggered **Windows preview build** includes the MP4 when present, and logs whether it was packaged. If the MP4 is absent, Bulkrr retains the original static `Bulkrr-splash.png` startup screen. The source video is not bundled automatically merely because it was shared in a chat.
+
+**Windows preview workflow:** [Run on demand](https://github.com/oriondd/Bulkrr/actions/workflows/windows-preview.yml) on `feature/v2-unified-roadmap`. The workflow runs tests, checks desktop startup, and builds the preview installer. Do not run multiple copies concurrently.
+
 ## What is Bulkrr?
 
 Bulkrr helps you paste a list of titles, look up matching metadata through your own Radarr and Sonarr instances, and review the results before adding them. It is designed for people who manage large movie, television, and anime libraries and want more visibility than a one-title-at-a-time workflow.
