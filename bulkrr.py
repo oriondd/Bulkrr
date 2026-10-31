@@ -1,6 +1,6 @@
 import sys, json, re, html, os, difflib, urllib.request, urllib.parse, urllib.error, datetime, traceback, logging, copy
 from pathlib import Path
-from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QRect, QElapsedTimer
+from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QRect
 from PySide6.QtGui import (
     QColor,
     QBrush,
@@ -9,8 +9,6 @@ from PySide6.QtGui import (
     QRadialGradient,
     QPen,
     QIcon,
-    QFont,
-    QLinearGradient,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -82,88 +80,6 @@ from bulkrr_sessions import save_review, load_review
 from bulkrr_calendar import fetch_schedule
 from bulkrr_collections import expand_collection
 from bulkrr_extensions import discover_manifests
-
-
-class AnimeIntroSplash(QSplashScreen):
-    """Original manga-inspired animated startup sequence; no video or network required."""
-
-    DURATION_MS = 3400
-
-    def __init__(self):
-        super().__init__(QPixmap(800, 450))
-        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
-        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
-        self.clock = QElapsedTimer()
-        self.frame_timer = QTimer(self)
-        self.frame_timer.setInterval(33)
-        self.frame_timer.timeout.connect(self.update)
-
-    def start(self):
-        self.clock.start()
-        self.frame_timer.start()
-        self.show()
-
-    def stop(self):
-        self.frame_timer.stop()
-
-    def drawContents(self, painter):
-        elapsed = self.clock.elapsed() if self.clock.isValid() else 0
-        t = min(1.0, elapsed / self.DURATION_MS)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w, h = self.width(), self.height()
-        backdrop = QLinearGradient(0, 0, w, h)
-        backdrop.setColorAt(0, QColor("#080c1b"))
-        backdrop.setColorAt(0.55, QColor("#17112e"))
-        backdrop.setColorAt(1, QColor("#0a1429"))
-        painter.fillRect(self.rect(), backdrop)
-
-        # Stylized manga frames: diagonal motion, speed lines and abstract
-        # ink silhouettes. All artwork is procedural and original.
-        if t < 0.64:
-            progress = t / 0.64
-            for i in range(5):
-                x = int((i * 195 - 160 + progress * 510) % 1050 - 140)
-                top = 28 + (i % 2) * 42
-                panel = QRect(x, top, 168, 345 - (i % 3) * 22)
-                painter.setPen(QPen(QColor("#8c7bb9"), 2))
-                painter.setBrush(QColor("#161c33" if i % 2 else "#22223e"))
-                painter.drawRect(panel)
-                painter.save()
-                painter.setClipRect(panel.adjusted(4, 4, -4, -4))
-                painter.setPen(QPen(QColor("#c5c0df"), 3))
-                for k in range(12):
-                    yy = top + k * 32
-                    painter.drawLine(x - 35, yy + 90, x + 210, yy - 55)
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.setBrush(QColor("#080b19"))
-                painter.drawEllipse(x + 48, top + 46, 82, 105)
-                painter.drawRoundedRect(x + 30, top + 143, 118, 195, 34, 34)
-                painter.restore()
-            overlay = QColor("#0a0b1b")
-            overlay.setAlpha(int(170 * max(0.0, (progress - 0.68) / 0.32)))
-            painter.fillRect(self.rect(), overlay)
-
-        # The wordmark arrives after the panels, with a restrained violet wipe.
-        reveal = max(0.0, min(1.0, (t - 0.49) / 0.22))
-        if reveal:
-            painter.save()
-            painter.setOpacity(reveal)
-            title_font = QFont("Arial", 68, QFont.Weight.Black)
-            title_font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, 8)
-            painter.setFont(title_font)
-            painter.setPen(QColor("#f7f5ff"))
-            painter.drawText(QRect(0, 143, w, 118), Qt.AlignmentFlag.AlignCenter, "BULKRR")
-            painter.setPen(QPen(QColor("#9b7cff"), 3))
-            line_width = int(380 * reveal)
-            painter.drawLine((w - line_width) // 2, 275, (w + line_width) // 2, 275)
-            painter.setFont(QFont("Arial", 12, QFont.Weight.DemiBold))
-            painter.setPen(QColor("#bfb3e5"))
-            painter.drawText(QRect(0, 299, w, 30), Qt.AlignmentFlag.AlignCenter,
-                             "YOUR UNIVERSE. ONE LIBRARY.")
-            painter.restore()
-
-        if t > 0.91:
-            painter.fillRect(self.rect(), QColor(9, 12, 25, int(235 * (t - 0.91) / 0.09)))
 
 
 class CinematicHero(QWidget):
@@ -4075,17 +3991,19 @@ class Main(QMainWindow):
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     app.setWindowIcon(QIcon(str(ASSET_DIR / "Bulkrr.ico")))
-    splash = AnimeIntroSplash()
-    splash.start()
-    app.processEvents()
+    # Use the existing branded image until the user-supplied intro video
+    # is ready for integration; don't substitute an unrelated animation.
+    pix = QPixmap(str(ASSET_DIR / "Bulkrr-splash.png"))
+    splash = QSplashScreen(pix) if not pix.isNull() else None
+    if splash:
+        splash.show()
+        app.processEvents()
     w = Main()
 
-    # Preserve the full intro duration without delaying the UI event loop.
     def show_main():
-        splash.stop()
         w.show()
-        splash.finish(w)
+        if splash:
+            splash.finish(w)
 
-    remaining = max(0, splash.DURATION_MS - splash.clock.elapsed())
-    QTimer.singleShot(remaining, show_main)
+    QTimer.singleShot(1800 if splash else 0, show_main)
     sys.exit(app.exec())
