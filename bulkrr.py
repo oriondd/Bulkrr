@@ -1060,6 +1060,24 @@ class Main(QMainWindow):
         self.discover_button.setEnabled(False)
         self.run_worker("discover", config={"kind": self.discover_kind.currentText(), "term": term}, done=self.discovered)
 
+    def load_tmdb_trending(self, kind):
+        if self.worker and self.worker.isRunning():
+            return
+        access_token, accepted = QInputDialog.getText(
+            self, "TMDB discovery", "Enter your TMDB API read access token (not saved):",
+            QLineEdit.EchoMode.Password,
+        )
+        if not accepted or not access_token.strip():
+            return
+        self.tmdb_movie_button.setEnabled(False)
+        self.tmdb_tv_button.setEnabled(False)
+        self.run_worker("trending_tmdb", config={"kind": kind, "access_token": access_token.strip()},
+                        done=self.tmdb_trending_loaded)
+
+    def tmdb_trending_loaded(self, records):
+        self.discovered(records)
+        self.logmsg("Trending movie/TV metadata supplied by TMDB; review before importing")
+
     def load_trending_anime(self):
         if self.worker and self.worker.isRunning():
             return
