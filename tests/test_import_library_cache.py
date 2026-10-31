@@ -54,6 +54,32 @@ class ImportLibraryCacheTests(unittest.TestCase):
         self.assertIn("Invalid root folder", output[0][0][2])
         self.assertEqual(sum(method == "POST" for _, _, method in calls), 0)
 
+    def test_invalid_sonarr_root_folder_does_not_submit_import(self):
+        item = {
+            "input": "Example Series", "selected": 0, "action": "add",
+            "matches": [{
+                "app": "sonarr", "type": "tv", "id": 202,
+                "data": {"title": "Example Series", "tvdbId": 202},
+            }],
+        }
+        worker = bulkrr.Worker(
+            "import", {"sonarr": {"url": "http://example.invalid", "key": "test"}},
+            items=[item],
+            config={"tv_folder": ["invalid", "path"], "sonarr_profile": 1,
+                    "search": True, "dry_run": False},
+        )
+        calls = []
+        output = []
+        def fake_call(app, endpoint, method="GET", payload=None):
+            calls.append((app, endpoint, method))
+            return []
+        worker.call = fake_call
+        worker.finished_data.connect(output.append)
+        worker.run()
+        self.assertEqual(output[0][0][1], "red")
+        self.assertIn("Invalid root folder", output[0][0][2])
+        self.assertEqual(sum(method == "POST" for _, _, method in calls), 0)
+
     def test_invalid_profile_does_not_abort_entire_batch(self):
         worker = bulkrr.Worker(
             "import", {"radarr": {"url": "http://example.invalid", "key": "test"}},
