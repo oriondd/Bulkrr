@@ -8,7 +8,7 @@ from bulkrr_tmdb import fetch_trending, normalize_trending
 class TMDBTrendingTests(unittest.TestCase):
     def test_normalization_deduplicates_and_handles_invalid_rows(self):
         result = normalize_trending({"results": [
-            {"id": 12, "title": "Movie A", "release_date": "2026-01-01"},
+            {"id": 12, "title": "Movie A", "release_date": "2026-01-01", "genre_ids": [27, 9648, 999999]},
             {"id": 12, "title": "Movie A", "release_date": "2026-01-01"},
             {"title": "", "release_date": "2025-01-01"},
             {"title": "Movie B", "release_date": "unknown"},
@@ -16,6 +16,7 @@ class TMDBTrendingTests(unittest.TestCase):
         self.assertEqual([x["title"] for x in result], ["Movie A", "Movie B"])
         self.assertEqual(result[0]["year"], 2026)
         self.assertEqual(result[0]["tmdb_id"], 12)
+        self.assertEqual(result[0]["genres"], ["Horror", "Mystery"])
         self.assertIsNone(result[1]["year"])
 
     def test_tv_normalization_and_invalid_payload(self):
