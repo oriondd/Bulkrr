@@ -884,7 +884,7 @@ class Main(QMainWindow):
         self.navigation.setMinimumWidth(172)
         self.navigation.setMaximumWidth(220)
         self.navigation.setSpacing(3)
-        self.navigation.addItems(["Connections", "Import & Review", "Library", "Discover", "Activity Log"])
+        self.navigation.addItems(["Dashboard", "Import & Review", "Discover", "Library", "Connections", "Activity Log"])
         self.navigation.setToolTip("Choose a workspace. Import & Review is the primary workflow.")
         workspace.addWidget(self.navigation)
         tabs = QTabWidget()
@@ -892,8 +892,14 @@ class Main(QMainWindow):
         tabs.tabBar().hide()
         workspace.addWidget(tabs, 1)
         shell_layout.addLayout(workspace, 1)
-        self.navigation.currentRowChanged.connect(tabs.setCurrentIndex)
-        tabs.currentChanged.connect(self.navigation.setCurrentRow)
+        self._navigation_to_tab = [0, 2, 4, 3, 1, 5]
+        self.navigation.currentRowChanged.connect(
+            lambda row: tabs.setCurrentIndex(self._navigation_to_tab[row]) if 0 <= row < len(self._navigation_to_tab) else None
+        )
+        tabs.currentChanged.connect(
+            lambda index: self.navigation.setCurrentRow(self._navigation_to_tab.index(index))
+            if index in self._navigation_to_tab else None
+        )
         self.setCentralWidget(shell)
         setup = QWidget()
         self.setup_layout = QVBoxLayout(setup)
@@ -1331,13 +1337,47 @@ class Main(QMainWindow):
             "Timestamped connection, lookup, import and error details will appear here. A persistent log is saved in AppData\\Roaming\\Bulkrr\\bulkrr.log"
         )
         tabs.addTab(self.log, "Activity log")
+        dashboard = QWidget()
+        dashboard_layout = QVBoxLayout(dashboard)
+        dashboard_layout.setSpacing(18)
+        welcome = QLabel("Your media. One workspace.")
+        welcome.setObjectName("dashboardHero")
+        dashboard_layout.addWidget(welcome)
+        dashboard_layout.addWidget(QLabel(
+            "Discover titles, review matches, and manage your Radarr / Sonarr library."
+        ))
+        dashboard_status = QGroupBox("Connected services")
+        status_layout = QHBoxLayout(dashboard_status)
+        self.dashboard_radarr = QLabel("●  Radarr  ·  Not connected")
+        self.dashboard_sonarr = QLabel("●  Sonarr  ·  Not connected")
+        status_layout.addWidget(self.dashboard_radarr)
+        status_layout.addWidget(self.dashboard_sonarr)
+        dashboard_layout.addWidget(dashboard_status)
+        dashboard_layout.addWidget(QLabel("Start exploring"))
+        quick_actions = QHBoxLayout()
+        for title, destination in (
+            ("Discover movies, TV & anime", 4),
+            ("Import a title list", 2),
+            ("Browse library", 3),
+        ):
+            button = QPushButton(title)
+            button.setMinimumHeight(58)
+            button.clicked.connect(lambda checked=False, page=destination: tabs.setCurrentIndex(page))
+            quick_actions.addWidget(button)
+        dashboard_layout.addLayout(quick_actions)
+        dashboard_layout.addWidget(QLabel("Recent activity"))
+        self.dashboard_activity = QLabel("Your latest imports and searches will appear in Activity Log.")
+        self.dashboard_activity.setWordWrap(True)
+        dashboard_layout.addWidget(self.dashboard_activity)
+        dashboard_layout.addStretch()
+        tabs.insertTab(0, dashboard, "Dashboard")
         self.tabs = tabs
         # Keep dense pages usable without relying on hidden tab navigation.
         for page_index in range(tabs.count()):
             page = tabs.widget(page_index)
             if isinstance(page, QWidget):
                 page.setMinimumWidth(0)
-        self.navigation.setCurrentRow(1)
+        self.navigation.setCurrentRow(0)
         self.statusBar().showMessage("Connect to Radarr/Sonarr to begin")
         self.setStyleSheet(DARK_THEME)
         self.update_review_actions()
@@ -1398,7 +1438,7 @@ class Main(QMainWindow):
         self.input.setPlainText("\n".join(combined))
         self.items = []
         self.refresh()
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(2)
 
     def load_calendar(self):
         if self.worker and self.worker.isRunning():
@@ -1651,7 +1691,7 @@ class Main(QMainWindow):
         self.input.setPlainText("\n".join(titles))
         self.items = []
         self.refresh()
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(2)
         self.logmsg(f"Queued {len(lines)} discovered titles for manual review")
 
     def update_storage_estimate(self):
@@ -1921,7 +1961,7 @@ class Main(QMainWindow):
         self.input.setPlainText("\n".join(titles))
         self.items = []
         self.refresh()
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(2)
         self.logmsg(f"Loaded extension '{entry['name']}' for manual review")
 
     def check_updates(self):
@@ -2339,6 +2379,8 @@ class Main(QMainWindow):
 
     def connected(self, data):
         self.server_data = data
+        self.dashboard_radarr.setText("●  Radarr  ·  " + ("Connected" if "radarr" in data else "Not connected"))
+        self.dashboard_sonarr.setText("●  Sonarr  ·  " + ("Connected" if "sonarr" in data else "Not connected"))
         connected_names = [app.title() for app in ("radarr", "sonarr") if app in data]
         self.header_status.setText(
             "●  " + " + ".join(connected_names) + " connected"
@@ -2437,7 +2479,7 @@ class Main(QMainWindow):
         QMessageBox.information(
             self, "Ready", "Connected and configured. You can now analyze titles."
         )
-        self.tabs.setCurrentIndex(1)
+        self.tabs.setCurrentIndex(2)
 
     def choose_import_files(self):
         paths, _ = QFileDialog.getOpenFileNames(
