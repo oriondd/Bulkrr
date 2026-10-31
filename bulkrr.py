@@ -3095,21 +3095,29 @@ class Main(QMainWindow):
         self.logmsg("Import worker failed; verify Radarr/Sonarr before retrying")
 
     def imported(self, results):
+        # The approved import snapshot supplies stable row identities. Never
+        # update an unrelated row that happens to share an input title.
+        rows = getattr(self, "active_import_rows", [])
+        pending = {
+            self.items[row]["input"]: row
+            for row in rows
+            if 0 <= row < len(self.items)
+        }
         for name, status, message in results:
-            for item in self.items:
-                if item["input"] == name and item["status"] in (
-                    "ready",
-                    "working",
-                    "done",
-                    "failed",
-                ):
-                    item["status"] = (
-                        ("ready" if status == "green" else "failed")
-                        if getattr(self, "active_dry_run", False)
-                        else ("done" if status == "green" else "failed")
-                    )
-                    item["message"] = message
-                    break
+            row = pending.get(name)
+            if row is None:
+                self.logmsg(f"Ignored unexpected import result for {name}")
+                continue
+            item = self.items[row]
+            if item.get("status") not in ("ready", "working", "done", "failed"):
+                continue
+            item["status"] = (
+                ("ready" if status == "green" else "failed")
+                if getattr(self, "active_dry_run", False)
+                else ("done" if status == "green" else "failed")
+            )
+            item["message"] = message
+        self.active_import_rows = []
         self.refresh()
         self.logmsg(
             f"{'Dry run finished' if getattr(self, 'active_dry_run', False) else 'Import finished'}: "
