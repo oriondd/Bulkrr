@@ -1289,8 +1289,18 @@ class Main(QMainWindow):
         search_row.addWidget(self.discover_button)
         discover_layout.addWidget(search_panel)
 
-        trending_panel = QGroupBox("Explore")
+        trending_panel = QGroupBox("Browse collections")
         trending_row = QHBoxLayout(trending_panel)
+        self.discover_category = QComboBox()
+        self.discover_category.addItems([
+            "Trending movies", "Trending TV", "Trending anime",
+            "New releases (movies)", "New releases (TV)",
+        ])
+        self.discover_category.setMinimumWidth(205)
+        browse_btn = QPushButton("Browse")
+        browse_btn.clicked.connect(self.browse_discovery_category)
+        trending_row.addWidget(self.discover_category)
+        trending_row.addWidget(browse_btn)
         for button in (self.trending_anime_button, self.tmdb_movie_button, self.tmdb_tv_button):
             button.setObjectName("secondaryAction")
             trending_row.addWidget(button)
@@ -1612,7 +1622,21 @@ class Main(QMainWindow):
         self.discovered(records)
         self.logmsg(f"Loaded {len(records)} verified TMDB collection movies for manual review")
 
-    def load_tmdb_trending(self, kind):
+    def browse_discovery_category(self):
+        category = self.discover_category.currentText()
+        self.discover_section_title.setText(category)
+        if category == "Trending anime":
+            self.load_trending_anime()
+        elif category == "Trending TV":
+            self.load_tmdb_trending("tv")
+        elif category == "Trending movies":
+            self.load_tmdb_trending("movie")
+        elif category == "New releases (movies)":
+            self.load_tmdb_trending("movie", window="day")
+        elif category == "New releases (TV)":
+            self.load_tmdb_trending("tv", window="day")
+
+    def load_tmdb_trending(self, kind, window="week"):
         if self.worker and self.worker.isRunning():
             return
         access_token, accepted = QInputDialog.getText(
@@ -1623,7 +1647,7 @@ class Main(QMainWindow):
             return
         self.tmdb_movie_button.setEnabled(False)
         self.tmdb_tv_button.setEnabled(False)
-        self.run_worker("trending_tmdb", config={"kind": kind, "access_token": access_token.strip()},
+        self.run_worker("trending_tmdb", config={"kind": kind, "window": window, "access_token": access_token.strip()},
                         done=self.tmdb_trending_loaded)
 
     def tmdb_trending_loaded(self, records):
