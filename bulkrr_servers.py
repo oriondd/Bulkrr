@@ -79,3 +79,38 @@ def route_to_profiles(profiles, assignments):
         seen.add(item_id)
         grouped.setdefault(profile_id, {"profile": dict(by_id[profile_id]), "item_ids": []})["item_ids"].append(item_id)
     return list(grouped.values())
+
+
+def check_routed_libraries(routes, fetch_library):
+    """Read-only multi-server inventory check, isolated by destination profile.
+
+    fetch_library(profile) must return that profile's movie/series API records.
+    Failures are reported per destination; they never fall back to another server.
+    """
+    if not isinstance(routes, list) or len(routes) > 500 or not callable(fetch_library):
+        raise ValueError("Invalid routing checks")
+    results = []
+    seen = set()
+    for route in routes:
+        if not isinstance(route, dict) or not isinstance(route.get("profile"), dict):
+            raise ValueError("Invalid routing group")
+        profile = validate_profiles([route["profile"]])[0]
+        identifier = profile["id"]
+        if identifier in seen:
+            raise ValueError("Duplicate routing destination")
+        seen.add(identifier)
+        ids = route.get("item_ids")
+        if (not isinstance(ids, list) or not ids or len(ids) > 500
+                or any(type(item) is not int or item <= 0 for item in ids)
+                or len(ids) != len(set(ids))):
+            raise ValueError("Invalid routed item IDs")
+        try:
+            records = fetch_library(profile)
+            if not isinstance(records, list):
+                raise ValueError("Invalid library response")
+            results.append({"profile_id": identifier, "item_ids": list(ids),
+                            "library_count": len(records), "error": None})
+        except Exception as exc:
+            results.append({"profile_id": identifier, "item_ids": list(ids),
+                            "library_count": None, "error": str(exc)})
+    return results
