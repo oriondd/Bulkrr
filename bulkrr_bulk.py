@@ -32,3 +32,39 @@ def estimate_storage(item_count, average_gib):
     if average_gib == float("inf") or average_gib != average_gib:
         raise ValueError("Average size must be finite")
     return round(item_count * average_gib, 2)
+
+
+def plan_episode_searches(episodes):
+    """Plan explicit Sonarr episode upgrade searches without changing files.
+
+    Only monitored, aired episodes with a file explicitly below the quality
+    cutoff qualify. Unknown cutoff status and missing files are excluded.
+    """
+    from datetime import datetime, timezone
+    if not isinstance(episodes, list) or len(episodes) > 5000:
+        raise ValueError("Expected at most 5000 episode records")
+    eligible, seen = [], set()
+    now = datetime.now(timezone.utc)
+    for episode in episodes:
+        if not isinstance(episode, dict) or episode.get("monitored") is not True:
+            continue
+        ident = episode.get("id")
+        if type(ident) is not int or ident <= 0 or ident in seen:
+            continue
+        file_info = episode.get("episodeFile")
+        if not isinstance(file_info, dict) or file_info.get("qualityCutoffNotMet") is not True:
+            continue
+        air_date = episode.get("airDateUtc")
+        if not isinstance(air_date, str):
+            continue
+        try:
+            air_time = datetime.fromisoformat(air_date.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if air_time.tzinfo is None or air_time > now:
+            continue
+        seen.add(ident)
+        eligible.append(ident)
+        if len(eligible) > 500:
+            raise ValueError("Episode searches are limited to 500 items")
+    return [{"name": "EpisodeSearch", "episodeIds": eligible}] if eligible else []
