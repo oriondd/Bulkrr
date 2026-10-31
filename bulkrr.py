@@ -1441,7 +1441,6 @@ class Main(QMainWindow):
             "Forget the in-memory TMDB token and prompt for a new one on your next TMDB browse"
         )
         self.tmdb_token_reset.clicked.connect(self.clear_tmdb_token)
-        trending_row.addWidget(self.tmdb_token_reset)
         for button in (self.trending_anime_button, self.tmdb_movie_button, self.tmdb_tv_button):
             button.setObjectName("secondaryAction")
             trending_row.addWidget(button)
@@ -1476,6 +1475,7 @@ class Main(QMainWindow):
             button.setObjectName("secondaryAction")
             genre_row.addWidget(button)
         advanced_layout.addLayout(genre_row)
+        advanced_layout.addWidget(self.tmdb_token_reset, 0, Qt.AlignmentFlag.AlignLeft)
         self.discover_advanced_toggle = QPushButton("⚙  Advanced discovery tools")
         self.discover_advanced_toggle.setObjectName("secondaryAction")
         self.discover_advanced_toggle.setCheckable(True)
