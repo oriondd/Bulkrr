@@ -2610,7 +2610,7 @@ class Main(QMainWindow):
         lines = self.input.toPlainText().splitlines()
         if previous in lines:
             lines[lines.index(previous)] = updated
-            self.input.setPlainText("\\n".join(lines))
+            self.input.setPlainText("\n".join(lines))
         self._edit_recheck_row = row
         self._edit_recheck_previous = list(self.items)
         self.items[row] = {
