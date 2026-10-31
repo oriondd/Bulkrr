@@ -65,6 +65,7 @@ from bulkrr_library import missing_movies, missing_series, upgrade_movies
 from bulkrr_bulk import plan_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_trending import fetch_trending_anime
+from bulkrr_tmdb import fetch_trending
 from bulkrr_recommendations import rank_candidates
 from bulkrr_genres import favorite_genres
 from bulkrr_settings import write_settings
