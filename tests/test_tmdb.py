@@ -1,11 +1,67 @@
 import json
+import datetime
 import unittest
 from unittest.mock import patch
 
-from bulkrr_tmdb import fetch_trending, normalize_trending, fetch_collection, normalize_collection, search_collections, normalize_collection_search
+from bulkrr_tmdb import fetch_new_releases, fetch_trending, normalize_trending, fetch_collection, normalize_collection, search_collections, normalize_collection_search
 
 
 class TMDBTrendingTests(unittest.TestCase):
+
+    def test_new_releases_use_date_filters_and_exclude_old_titles(self):
+        today = datetime.date.today()
+        recent = (today - datetime.timedelta(days=3)).isoformat()
+        old = (today - datetime.timedelta(days=90)).isoformat()
+
+        class Response:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, limit):
+                return json.dumps({"results": [
+                    {"id": 1, "title": "Recent", "release_date": recent,
+                     "poster_path": "/valid_123.jpg"},
+                    {"id": 2, "title": "Old", "release_date": old},
+                    {"id": 3, "title": "Unknown", "release_date": ""},
+                ]}).encode()
+
+        with patch("bulkrr_tmdb.urllib.request.urlopen", return_value=Response()) as mocked:
+            records = fetch_new_releases("movie", "test-token")
+        self.assertEqual([record["title"] for record in records], ["Recent"])
+        self.assertEqual(records[0]["poster_url"],
+                         "https://image.tmdb.org/t/p/w342/valid_123.jpg")
+        request = mocked.call_args.args[0]
+        self.assertIn("/discover/movie?", request.full_url)
+        self.assertIn("primary_release_date.gte=", request.full_url)
+        self.assertIn("primary_release_date.lte=", request.full_url)
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-token")
+        self.assertNotIn("test-token", request.full_url)
+
+    def test_tv_new_releases_use_first_air_date(self):
+        today = datetime.date.today().isoformat()
+        class Response:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, limit):
+                return json.dumps({"results": [
+                    {"id": 4, "name": "New Series", "first_air_date": today}
+                ]}).encode()
+        with patch("bulkrr_tmdb.urllib.request.urlopen", return_value=Response()) as mocked:
+            records = fetch_new_releases("tv", "test-token")
+        self.assertEqual(records[0]["title"], "New Series")
+        self.assertIn("first_air_date.gte=", mocked.call_args.args[0].full_url)
+
+    def test_new_releases_reject_invalid_inputs(self):
+        for kind, token, days in (("anime", "token", 45),
+                                  ("movie", "", 45),
+                                  ("tv", "token", 0),
+                                  ("movie", "token", 91)):
+            with self.subTest(kind=kind, days=days), self.assertRaises(ValueError):
+                fetch_new_releases(kind, token, days=days)
+
     def test_normalization_deduplicates_and_handles_invalid_rows(self):
         result = normalize_trending({"results": [
             {"id": 12, "title": "Movie A", "release_date": "2026-01-01", "genre_ids": [27, 9648, 999999]},
