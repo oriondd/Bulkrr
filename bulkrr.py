@@ -3007,6 +3007,22 @@ class Main(QMainWindow):
                 self, "Setup needed", "Save your connection preferences first."
             )
             return
+        # Reject malformed review selections rather than raising during approval.
+        malformed_selection = [
+            i for i in self.items
+            if i.get("status") == "ready"
+            and (
+                not isinstance(i.get("selected"), int)
+                or isinstance(i.get("selected"), bool)
+            )
+        ]
+        if malformed_selection:
+            QMessageBox.warning(
+                self, "Invalid review selection",
+                f"{len(malformed_selection)} ready title(s) have invalid match selections. "
+                "Reanalyze or review them before importing.",
+            )
+            return
         pending = [
             i for i in self.items if i["status"] == "ready" and i["selected"] >= 0
         ]
