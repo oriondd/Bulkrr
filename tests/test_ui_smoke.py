@@ -698,6 +698,27 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_missing_import_result_marks_unfinished_approved_row_failed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "movie: Completed", "status": "working",
+                             "matches": [], "selected": -1, "message": "Queued"},
+                            {"input": "movie: Missing", "status": "working",
+                             "matches": [], "selected": -1, "message": "Queued"},
+                        ]
+                        window.active_import_rows = [0, 1]
+                        window.active_dry_run = False
+                        window.imported([("movie: Completed", "green", "Added")])
+                        self.assertEqual(window.items[0]["status"], "done")
+                        self.assertEqual(window.items[1]["status"], "failed")
+                        self.assertIn("verify server state", window.items[1]["message"])
+                    finally:
+                        window.close()
+
     def test_import_results_only_modify_approved_rows(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
