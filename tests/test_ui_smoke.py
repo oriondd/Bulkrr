@@ -592,8 +592,10 @@ class MainWindowSmokeTests(unittest.TestCase):
                         ]
                         window.table.setSortingEnabled(True)
                         window.refresh()
-                        self.assertTrue(window.table.isSortingEnabled())
+                        self.assertFalse(window.table.isSortingEnabled())
                         self.assertEqual(window.table.rowCount(), 2)
+                        self.assertEqual(window.table.item(0, 1).text(), "movie: Zebra")
+                        self.assertEqual(window.table.item(1, 1).text(), "movie: Alpha")
                     finally:
                         window.close()
 
