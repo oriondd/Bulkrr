@@ -512,6 +512,25 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_restoring_exclusion_requires_review_again(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "Movie A", "status": "skipped", "action": "skip",
+                             "matches": [{"label": "Movie A"}], "selected": 0,
+                             "message": "Excluded from import by user selection"},
+                        ]
+                        window.refresh()
+                        window.table.selectRow(0)
+                        window.restore_selected_rows()
+                        self.assertEqual(window.items[0]["status"], "review")
+                        self.assertEqual(window.items[0]["action"], "review")
+                    finally:
+                        window.close()
+
     def test_selected_row_exclusion_is_preview_only(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
