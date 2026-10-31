@@ -43,6 +43,7 @@ jobs:
           if (Test-Path "Bulkrr.png") { $args += @("--add-data", "Bulkrr.png;.") }
           if (Test-Path "Bulkrr.ico") { $args += @("--add-data", "Bulkrr.ico;.") }
           if (Test-Path "Bulkrr-splash.png") { $args += @("--add-data", "Bulkrr-splash.png;.") }
+          if (Test-Path "Bulkrr-splash.mp4") { $args += @("--add-data", "Bulkrr-splash.mp4;.") }
           $args += "bulkrr.py"
           python -m PyInstaller @args
       - name: Install Inno Setup
