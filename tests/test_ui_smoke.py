@@ -499,6 +499,11 @@ class MainWindowSmokeTests(unittest.TestCase):
                             {"input": "Skipped", "matches": [], "selected": -1, "status": "skipped"},
                         ]
                         window.refresh()
+                        self.assertIsNone(window.table.cellWidget(0, 0))
+                        self.assertEqual(window.table.item(0, 0).text(), "●")
+                        window.review_search.setText("Review")
+                        self.assertEqual(window.review_visible_count.text(), "1 of 3 shown")
+                        window.review_search.clear()
                         window.review_filter.setCurrentIndex(1)
                         self.assertEqual([window.table.isRowHidden(i) for i in range(3)],
                                          [True, False, True])
