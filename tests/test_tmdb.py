@@ -2,7 +2,7 @@ import json
 import unittest
 from unittest.mock import patch
 
-from bulkrr_tmdb import fetch_trending, normalize_trending, fetch_collection, normalize_collection
+from bulkrr_tmdb import fetch_trending, normalize_trending, fetch_collection, normalize_collection, search_collections, normalize_collection_search
 
 
 class TMDBTrendingTests(unittest.TestCase):
@@ -42,6 +42,36 @@ class TMDBTrendingTests(unittest.TestCase):
         self.assertEqual(request.get_header("Authorization"), "Bearer test-token")
         self.assertNotIn("test-token", request.full_url)
         self.assertEqual(response.bound, 512 * 1024 + 1)
+
+    def test_collection_name_search_validates_and_deduplicates(self):
+        payload = {"results": [
+            {"id": 7, "name": "Example Collection"},
+            {"id": 7, "name": "Duplicate"},
+            {"id": True, "name": "Invalid"},
+            {"id": 9, "name": "Another Collection"},
+        ]}
+        self.assertEqual(normalize_collection_search(payload), [
+            {"id": 7, "name": "Example Collection"},
+            {"id": 9, "name": "Another Collection"},
+        ])
+        for term in ("", "x", "x" * 101):
+            with self.subTest(term=term), self.assertRaises(ValueError):
+                search_collections(term, "test-token")
+
+    def test_collection_search_encodes_name_and_hides_bearer_token(self):
+        class Response:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, limit):
+                return b'{"results":[{"id":42,"name":"Sample"}]}'
+        with patch("bulkrr_tmdb.urllib.request.urlopen", return_value=Response()) as mocked:
+            self.assertEqual(search_collections("Space & Beyond", "test-token")[0]["id"], 42)
+        request = mocked.call_args.args[0]
+        self.assertIn("Space+%26+Beyond", request.full_url)
+        self.assertNotIn("test-token", request.full_url)
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-token")
 
     def test_verified_collection_filters_invalid_parts_and_duplicate_ids(self):
         records = normalize_collection({"parts": [
