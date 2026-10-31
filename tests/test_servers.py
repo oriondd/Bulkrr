@@ -22,6 +22,12 @@ class ServerProfileTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_profiles([{**one, "url": "http://user:pass@host"}])
 
+    def test_rejects_missing_host_and_query(self):
+        base = {"id": "one", "kind": "sonarr", "url": "http://host:8989"}
+        for url in ("http://", "https://host?apikey=secret", "http://host#fragment"):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                validate_profiles([{**base, "url": url}])
+
     def test_saved_profiles_have_no_key(self):
         profiles = public_profiles([{"id": "one", "kind": "radarr", "url": "http://host", "key": "secret"}])
         self.assertNotIn("key", profiles[0])
