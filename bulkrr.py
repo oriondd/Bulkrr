@@ -2412,7 +2412,7 @@ class Main(QMainWindow):
             # Avoid creating one QWidget per title in large imports.
             indicator = QTableWidgetItem("●")
             indicator.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            indicator.setToolTip(labels.get(status, status) + "\\n" + item.get("message", ""))
+            indicator.setToolTip(labels.get(status, status) + "\n" + item.get("message", ""))
             indicator.setFlags(indicator.flags() & ~Qt.ItemFlag.ItemIsEditable)
             indicator.setForeground(QBrush(QColor({
                 "ready": "#62e49b", "done": "#62e49b",
