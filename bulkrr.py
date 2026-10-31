@@ -30,6 +30,8 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QGroupBox,
     QAbstractItemView,
+    QStyledItemDelegate,
+    QStyle,
     QDialog,
     QDialogButtonBox,
     QListWidget,
@@ -77,6 +79,75 @@ from bulkrr_sessions import save_review, load_review
 from bulkrr_calendar import fetch_schedule
 from bulkrr_collections import expand_collection
 from bulkrr_extensions import discover_manifests
+
+
+class MediaPosterDelegate(QStyledItemDelegate):
+    """Draw a portrait poster and readable title without Qt's cramped icon layout."""
+
+    def __init__(self, parent=None, featured=False):
+        super().__init__(parent)
+        self.featured = featured
+
+    def sizeHint(self, option, index):
+        return QSize(126, 170) if self.featured else QSize(172, 264)
+
+    def paint(self, painter, option, index):
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        rect = option.rect.adjusted(4, 4, -4, -4)
+        selected = bool(option.state & QStyle.StateFlag.State_Selected)
+        hovered = bool(option.state & QStyle.StateFlag.State_MouseOver)
+        painter.setPen(QPen(QColor("#b6a0ff" if selected else "#5d4b93" if hovered else "#35415e"), 2 if selected else 1))
+        painter.setBrush(QColor("#2b2452" if selected else "#202947" if hovered else "#151d32"))
+        painter.drawRoundedRect(rect, 11, 11)
+
+        poster_width = 90 if self.featured else 132
+        poster_height = 128 if self.featured else 188
+        image_rect = rect.adjusted(0, 8, 0, 0)
+        image_rect.setWidth(poster_width)
+        image_rect.setHeight(poster_height)
+        image_rect.moveLeft(rect.center().x() - poster_width // 2)
+        icon = index.data(Qt.ItemDataRole.DecorationRole)
+        if isinstance(icon, QIcon) and not icon.isNull():
+            pix = icon.pixmap(QSize(poster_width, poster_height))
+            if not pix.isNull():
+                scaled = pix.scaled(
+                    image_rect.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+                target = image_rect.adjusted(0, 0, 0, 0)
+                target.setSize(scaled.size())
+                target.moveCenter(image_rect.center())
+                painter.drawPixmap(target.topLeft(), scaled)
+        else:
+            painter.setPen(QColor("#8d80b5"))
+            painter.drawText(image_rect, Qt.AlignmentFlag.AlignCenter, "✦")
+
+        text_rect = rect.adjusted(9, poster_height + 15, -9, -7)
+        painter.setPen(QColor("#ffffff" if selected else "#e5e8f6"))
+        font = painter.font()
+        font.setPointSize(9 if self.featured else 10)
+        font.setBold(True)
+        painter.setFont(font)
+        lines = str(index.data(Qt.ItemDataRole.DisplayRole) or "").splitlines()
+        metrics = painter.fontMetrics()
+        if lines:
+            painter.drawText(
+                text_rect.adjusted(0, 0, 0, -metrics.height()),
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+                metrics.elidedText(lines[0], Qt.TextElideMode.ElideRight, text_rect.width()),
+            )
+        if len(lines) > 1 and not self.featured:
+            font.setBold(False)
+            font.setPointSize(8)
+            painter.setFont(font)
+            painter.setPen(QColor("#a9b6d6"))
+            painter.drawText(
+                text_rect.adjusted(0, metrics.height() + 2, 0, 0),
+                Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+                painter.fontMetrics().elidedText(lines[1], Qt.TextElideMode.ElideRight, text_rect.width()),
+            )
+        painter.restore()
 
 
 class PosterWorker(QThread):
@@ -1291,6 +1362,7 @@ class Main(QMainWindow):
         self.reset_discovery_button.clicked.connect(self.reset_discovery_filter)
         self.discover_results = QListWidget()
         self.discover_results.setObjectName("mediaCatalog")
+        self.discover_results.setItemDelegate(MediaPosterDelegate(self.discover_results))
         self.discover_results.setViewMode(QListWidget.ViewMode.IconMode)
         self.discover_results.setFlow(QListWidget.Flow.LeftToRight)
         self.discover_results.setWrapping(True)
@@ -1537,6 +1609,7 @@ class Main(QMainWindow):
         dashboard_layout.addWidget(self.dashboard_discover_note)
         self.dashboard_featured = QListWidget()
         self.dashboard_featured.setObjectName("dashboardFeatured")
+        self.dashboard_featured.setItemDelegate(MediaPosterDelegate(self.dashboard_featured, featured=True))
         self.dashboard_featured.setViewMode(QListWidget.ViewMode.IconMode)
         self.dashboard_featured.setFlow(QListWidget.Flow.LeftToRight)
         self.dashboard_featured.setWrapping(False)
