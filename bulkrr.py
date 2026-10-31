@@ -3109,6 +3109,9 @@ class Main(QMainWindow):
             if row is None:
                 self.logmsg(f"Ignored unexpected import result for {name}")
                 continue
+            if row in processed:
+                self.logmsg(f"Ignored duplicate import result for {name}")
+                continue
             item = self.items[row]
             if item.get("status") not in ("ready", "working", "done", "failed"):
                 continue
