@@ -2,6 +2,11 @@
 
 DARK_THEME = """
 QMainWindow, QWidget { background: #0b101b; color: #e8edf9; font-size: 13px; }
+QLabel#dashboardHero { font-size: 30px; font-weight: 800; color: #f5f7ff; padding: 14px 2px 4px 2px; }
+QListWidget#mediaCatalog { background: #0c1423; border: 1px solid #283650; border-radius: 12px; padding: 12px; }
+QListWidget#mediaCatalog::item { background: #172237; border: 1px solid #283752; border-radius: 10px; padding: 8px; margin: 2px; }
+QListWidget#mediaCatalog::item:hover { background: #243453; border-color: #6d57df; }
+QListWidget#mediaCatalog::item:selected { background: #2d2856; border: 2px solid #957eff; color: #ffffff; }
 QWidget:disabled { color: #8995ad; }
 QToolTip { background: #202c42; color: #f2f5ff; border: 1px solid #657394; padding: 6px; }
 QSplitter::handle { background: #263650; }
