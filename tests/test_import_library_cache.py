@@ -35,6 +35,25 @@ class ImportLibraryCacheTests(unittest.TestCase):
         worker.run()
         return calls, output
 
+    def test_invalid_root_folder_does_not_submit_import(self):
+        worker = bulkrr.Worker(
+            "import", {"radarr": {"url": "http://example.invalid", "key": "test"}},
+            items=[approved("First", 101)],
+            config={"movie_folder": ["not", "a", "path"], "radarr_profile": 1,
+                    "search": False, "dry_run": False},
+        )
+        calls = []
+        output = []
+        def fake_call(app, endpoint, method="GET", payload=None):
+            calls.append((app, endpoint, method))
+            return []
+        worker.call = fake_call
+        worker.finished_data.connect(output.append)
+        worker.run()
+        self.assertEqual(output[0][0][1], "red")
+        self.assertIn("Invalid root folder", output[0][0][2])
+        self.assertEqual(sum(method == "POST" for _, _, method in calls), 0)
+
     def test_invalid_profile_does_not_abort_entire_batch(self):
         worker = bulkrr.Worker(
             "import", {"radarr": {"url": "http://example.invalid", "key": "test"}},
