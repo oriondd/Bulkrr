@@ -89,7 +89,7 @@ def check_routed_libraries(routes, fetch_library):
     """
     if not isinstance(routes, list) or len(routes) > 500 or not callable(fetch_library):
         raise ValueError("Invalid routing checks")
-    results = []
+    validated_routes = []
     seen = set()
     assigned_items = set()
     for route in routes:
@@ -110,6 +110,10 @@ def check_routed_libraries(routes, fetch_library):
         assigned_items.update(ids)
         if len(assigned_items) > 500:
             raise ValueError("Routing checks are limited to 500 titles")
+        validated_routes.append((profile, list(ids)))
+    results = []
+    for profile, ids in validated_routes:
+        identifier = profile["id"]
         try:
             records = fetch_library(profile)
             if not isinstance(records, list):
