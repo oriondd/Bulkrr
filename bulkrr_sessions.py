@@ -45,6 +45,10 @@ def decode_snapshot(data):
         raise ValueError("Invalid title")
     if any(not isinstance(item, dict) for item in obj["review"]):
         raise ValueError("Invalid review record")
+    if len(obj["review"]) > 10000 or len(obj["titles"]) > 10000:
+        raise ValueError("Review session has too many entries")
+    if any(len(title) > 1000 for title in obj["titles"]):
+        raise ValueError("Review session title is too long")
     return {"titles": normalize_titles(obj["titles"]), "review": obj["review"]}
 
 
@@ -58,6 +62,8 @@ def save_review(path, titles, items):
         with tempfile.NamedTemporaryFile(dir=destination.parent, suffix=".tmp", delete=False) as stream:
             temp = Path(stream.name)
             stream.write(encode_snapshot(titles, items))
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temp, destination)
     finally:
         if temp is not None:
