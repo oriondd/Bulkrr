@@ -95,4 +95,66 @@ QLabel#categoryPolicy {
     background: #14243a; color: #b8c9e5; border: 1px solid #34496b;
     border-radius: 8px; padding: 10px;
 }
+
+/* Cinematic workspace: visual hierarchy, restrained violet glow, and readable cards. */
+QWidget#appHeader {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+        stop:0 #101a31, stop:0.55 #171932, stop:1 #241947);
+    border-bottom: 1px solid #433772;
+}
+QLabel#dashboardHero {
+    font-size: 34px; font-weight: 800; color: #ffffff;
+    padding: 20px 8px 12px 8px;
+}
+QListWidget#mainNavigation {
+    background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
+        stop:0 #141d35, stop:1 #0d1427);
+    border: 1px solid #354263; border-radius: 16px;
+    padding: 10px;
+}
+QListWidget#mainNavigation::item {
+    color: #bfc8e6; border-radius: 10px;
+    padding: 16px 12px; margin: 4px 2px;
+}
+QListWidget#mainNavigation::item:selected {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #5542a5, stop:1 #372c71);
+    border-left: 3px solid #b5a2ff; color: #ffffff;
+}
+QListWidget#mainNavigation::item:hover:!selected { background: #273052; color: white; }
+QListWidget#mediaCatalog {
+    background: #0b1121; border: 1px solid #34405e;
+    border-radius: 16px; padding: 12px;
+}
+QListWidget#mediaCatalog::item {
+    background: #141d34; color: #e7eafa;
+    border: 1px solid #34415e; border-radius: 12px;
+    padding: 4px; margin: 0px;
+}
+QListWidget#mediaCatalog::item:hover {
+    background: #232c4d; border: 1px solid #8d7bf5;
+}
+QListWidget#mediaCatalog::item:selected {
+    background: #29244e; border: 2px solid #a991ff; color: #ffffff;
+}
+QLabel#detailTitle { font-size: 20px; font-weight: 800; color: #f9f8ff; }
+QLabel#detailPoster {
+    background: #121a2e; border: 1px solid #6757a2;
+    border-radius: 14px; color: #c3b9ee;
+}
+QGroupBox {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+        stop:0 #172039, stop:1 #10172b);
+    border: 1px solid #354160; border-radius: 15px;
+    margin-top: 17px; padding: 16px; font-weight: 600;
+}
+QPushButton {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
+        stop:0 #765de7, stop:1 #6246cb);
+    border: 1px solid #9985f7; border-radius: 10px;
+    color: white; padding: 11px 15px; font-weight: 650;
+}
+QPushButton:hover { background: #8a72f7; border-color: #c1b1ff; }
+QPushButton#secondaryAction { background: #202b47; border: 1px solid #465576; }
+QPushButton#secondaryAction:hover { background: #303c61; }
 """
