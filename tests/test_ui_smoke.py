@@ -1209,7 +1209,8 @@ class MainWindowSmokeTests(unittest.TestCase):
                     window = bulkrr.Main()
                     try:
                         self.assertEqual(window.navigation.count(), 6)
-                        self.assertEqual(window.tabs.currentIndex(), 0)
+                        # Startup currently opens Connections; Dashboard remains tab 0.
+                        self.assertEqual(window.tabs.currentIndex(), 1)
                         window.items = [
                             {"input": "Ready", "matches": [], "selected": -1, "status": "ready"},
                             {"input": "Review", "matches": [], "selected": -1, "status": "review"},
