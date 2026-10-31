@@ -39,6 +39,19 @@ You don't need to be an expert to contribute. If you spot something that could b
 - **Personalized setup:** Configure Radarr/Sonarr endpoints, root folders, quality profiles, and search preferences.
 - **Custom branding:** Bulkrr application icon and startup splash screen.
 
+## Bulkrr 2.0 Windows preview (development branch)
+
+A **2.0 test installer** is built by the [Windows preview workflow](https://github.com/oriondd/Bulkrr/actions/workflows/windows-preview.yml) on the `feature/v2-unified-roadmap` branch. This is separate from the stable beta release above.
+
+1. Open the latest **successful** workflow run for the development branch and expand **Artifacts**.
+2. Download `Bulkrr-2.0-Windows-installer-preview` for the Windows setup executable, or `Bulkrr-2.0-Windows-preview` for the portable folder.
+3. Extract the downloaded ZIP before launching the installer or portable executable. GitHub may require you to sign in to download workflow artifacts.
+4. Connect to your own Radarr/Sonarr instances. Start with one movie and one TV series, review matches and destination profiles, and approve only intended additions.
+5. For multi-destination imports, choose whether to automatically search for missing content **after** approving the additions. **Yes** is the default; choose **No** to add without starting searches. Preview and rejection must not trigger writes or searches.
+6. Confirm the titles and search activity in Radarr/Sonarr. If something fails, report the exact error and the Actions run/commit used.
+
+**Caution:** This is a development preview, not a production release. Test with a small batch first and avoid exposing your API keys in issue reports. Artifacts expire after 14 days; use a newer successful workflow run if the download is gone.
+
 ## Download and install
 
 **Current beta:** [Bulkrr v1.5.0-beta](https://github.com/oriondd/Bulkrr/releases/tag/v1.5.0-beta)
