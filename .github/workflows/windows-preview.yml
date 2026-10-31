@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Only build/test the newest commit on each branch.
+concurrency:
+  group: windows-preview-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   windows-preview:
     runs-on: windows-latest
