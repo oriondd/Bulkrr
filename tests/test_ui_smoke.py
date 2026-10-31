@@ -504,13 +504,13 @@ class MainWindowSmokeTests(unittest.TestCase):
                     window = bulkrr.Main()
                     try:
                         items = [
-                            {"input": "Existing", "matches": [{"id": 1}], "selected": 0,
+                            {"input": "Existing", "matches": [{"id": 1, "type": "movie", "data": {"title": "Existing"}, "app": "radarr", "score": 0.99}], "selected": 0,
                              "status": "duplicate", "duplicate": {"files": 0}, "action": "add"},
                             {"input": "Missing", "matches": [], "selected": -1,
                              "status": "error", "duplicate": None, "action": "add"},
-                            {"input": "Ambiguous", "matches": [{"id": 2}], "selected": 0,
+                            {"input": "Ambiguous", "matches": [{"id": 2, "type": "movie", "data": {"title": "Ambiguous"}, "app": "radarr", "score": 0.75}], "selected": 0,
                              "status": "review", "duplicate": None, "action": "add"},
-                            {"input": "Ready", "matches": [{"id": 3}], "selected": 0,
+                            {"input": "Ready", "matches": [{"id": 3, "type": "movie", "data": {"title": "Ready"}, "app": "radarr", "score": 0.99}], "selected": 0,
                              "status": "ready", "duplicate": None, "action": "add"},
                         ]
                         with patch.object(window, "run_worker") as writes:
