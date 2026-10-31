@@ -43,6 +43,27 @@ class TMDBTrendingTests(unittest.TestCase):
         self.assertNotIn("test-token", request.full_url)
         self.assertEqual(response.bound, 512 * 1024 + 1)
 
+    def test_oversized_response_rejected(self):
+        class Response:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, limit):
+                return b"x" * limit
+        with patch("bulkrr_tmdb.urllib.request.urlopen", return_value=Response()):
+            with self.assertRaisesRegex(ValueError, "exceeds size limit"):
+                fetch_trending("movie", "test-token")
+
+    def test_genre_id_types_and_malformed_results(self):
+        results = normalize_trending({"results": [
+            {"title": "Mystery Film", "genre_ids": [9648, True, "27", 27]},
+            None,
+            {"title": "No Genres", "genre_ids": "27"},
+        ]}, "movie")
+        self.assertEqual(results[0]["genres"], ["Mystery", "Horror"])
+        self.assertEqual(results[1]["genres"], [])
+
     def test_invalid_token_and_request_bounds(self):
         for token in ("", "a b", None):
             with self.subTest(token=token), self.assertRaises(ValueError):
