@@ -14,4 +14,7 @@ def config_dir(home=None, environ=None, platform=None):
     if platform == "darwin":
         return home / "Library" / "Application Support" / "Bulkrr"
     root = env.get("XDG_CONFIG_HOME")
-    # Validate XDG paths using POSIX rules even when testing Linux on Windows.\n    # Path.is_absolute() follows the host OS, not the requested target platform.\n    return (Path(root) if isinstance(root, str) and PurePosixPath(root).is_absolute()\n            else home / ".config") / "Bulkrr"
+    # Validate XDG paths using POSIX rules even when testing Linux on Windows.
+    # Path.is_absolute() follows the host OS, not the requested target platform.
+    return (Path(root) if isinstance(root, str) and PurePosixPath(root).is_absolute()
+            else home / ".config") / "Bulkrr"
