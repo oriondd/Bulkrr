@@ -50,3 +50,32 @@ def legacy_profiles(settings):
 def public_profiles(profiles):
     """Safe-to-save settings subset; reject unexpected embedded secrets."""
     return validate_profiles(profiles)
+
+
+def route_to_profiles(profiles, assignments):
+    """Resolve explicitly selected server destinations without network writes.
+
+    assignments maps a unique item ID to a profile ID and required server kind.
+    No default destination is inferred: every item must have an explicit route.
+    """
+    validated = validate_profiles(profiles)
+    by_id = {profile["id"]: profile for profile in validated}
+    if not isinstance(assignments, list) or len(assignments) > 500:
+        raise ValueError("Expected at most 500 explicit routing assignments")
+    grouped = {}
+    seen = set()
+    for item in assignments:
+        if not isinstance(item, dict):
+            raise ValueError("Invalid routing assignment")
+        item_id = item.get("item_id")
+        profile_id = item.get("profile_id")
+        kind = item.get("kind")
+        if type(item_id) is not int or item_id <= 0 or item_id in seen:
+            raise ValueError("Item IDs must be unique positive integers")
+        if not isinstance(profile_id, str) or profile_id not in by_id:
+            raise ValueError("An explicit known destination profile is required")
+        if kind not in ("radarr", "sonarr") or by_id[profile_id]["kind"] != kind:
+            raise ValueError("Destination profile does not match the item kind")
+        seen.add(item_id)
+        grouped.setdefault(profile_id, {"profile": dict(by_id[profile_id]), "item_ids": []})["item_ids"].append(item_id)
+    return list(grouped.values())
