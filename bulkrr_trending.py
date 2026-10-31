@@ -68,8 +68,15 @@ def parse_trending(payload):
             "popularity": score,
             "genres": genres,
             "release_date": str(year) if year else "",
-            "poster_url": (record.get("coverImage") or {}).get("large")
-                if isinstance(record.get("coverImage"), dict) else None,
+            "poster_url": (
+                record["coverImage"]["large"]
+                if isinstance(record.get("coverImage"), dict)
+                and isinstance(record["coverImage"].get("large"), str)
+                and record["coverImage"]["large"].startswith(
+                    ("https://s4.anilist.co/", "https://s3.anilist.co/")
+                )
+                else None
+            ),
         })
     return result
 
