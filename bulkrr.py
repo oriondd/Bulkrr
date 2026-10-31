@@ -545,15 +545,11 @@ class Worker(QThread):
                             (item["input"], "green", "DRY RUN: " + description)
                         )
                         continue
+                    if (app, str(m["id"])) in added_in_batch:
+                        results.append((item["input"], "green", "Skipped existing library title"))
+                        self.progress.emit(f"  Skipped title already added in this batch: {obj['title']}")
+                        continue
                     if found:
-                        if (app, str(m["id"])) in added_in_batch:
-                            results.append(
-                                (item["input"], "green", "Skipped existing library title")
-                            )
-                            self.progress.emit(
-                                f"  Skipped title already added in this batch: {obj['title']}"
-                            )
-                            continue
                         action = item.get("action", "skip")
                         if action not in ("skip", "upgrade", "replace"):
                             results.append(
