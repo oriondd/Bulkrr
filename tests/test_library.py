@@ -2,7 +2,7 @@
 
 import unittest
 
-from bulkrr_library import missing_movies, missing_series
+from bulkrr_library import missing_movies, missing_series, upgrade_movies
 
 
 class MissingInventoryTests(unittest.TestCase):
@@ -26,6 +26,24 @@ class MissingInventoryTests(unittest.TestCase):
         self.assertEqual(missing_series(shows), [
             {"id": 4, "title": "Partial", "year": None, "monitored": False, "total": 12, "available": 8, "missing": 4}
         ])
+
+    def test_upgrade_movies_requires_explicit_below_cutoff_file(self):
+        movies = [
+            {"id": 1, "title": "Upgrade", "hasFile": True,
+             "movieFile": {"qualityCutoffNotMet": True}, "monitored": True},
+            {"id": 2, "title": "Complete", "hasFile": True,
+             "movieFile": {"qualityCutoffNotMet": False}},
+            {"id": 3, "title": "Unknown", "hasFile": True, "movieFile": {}},
+            {"id": 4, "title": "Missing", "hasFile": False,
+             "movieFile": {"qualityCutoffNotMet": True}},
+            {"id": 5, "title": "Invalid", "hasFile": True,
+             "movieFile": {"qualityCutoffNotMet": True}},
+            {"id": 6, "title": "Bad file", "hasFile": True, "movieFile": "bad"},
+        ]
+        self.assertEqual(upgrade_movies(movies), [{
+            "id": 1, "title": "Upgrade", "year": None,
+            "monitored": True, "status": "upgrade",
+        }])
 
     def test_counts_never_negative(self):
         self.assertEqual(missing_series([{
