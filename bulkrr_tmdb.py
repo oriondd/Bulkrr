@@ -4,6 +4,7 @@ TMDB is not queried without explicit user credentials. No tokens are written
 to Bulkrr settings or logs, and no media is imported automatically.
 """
 import json
+import re
 import urllib.request
 
 BASE = "https://api.themoviedb.org/3"
@@ -56,6 +57,9 @@ def normalize_trending(payload, kind):
             "genres": [GENRES[genre] for genre in genres[:20] if type(genre) is int and genre in GENRES],
             "release_date": raw_date,
             "tmdb_id": record.get("id") if type(record.get("id")) is int else None,
+            "poster_url": ("https://image.tmdb.org/t/p/w342" + record["poster_path"])
+                if isinstance(record.get("poster_path"), str)
+                and re.fullmatch(r"/[A-Za-z0-9_-]+\\.(?:jpg|jpeg|png|webp)", record["poster_path"]) else None,
         })
     return found
 
