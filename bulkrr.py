@@ -116,6 +116,11 @@ class Worker(QThread):
         self.connections = connections
         self.items = items or []
         self.config = config or {}
+        self._stop_after_current = False
+
+    def request_stop_after_current(self):
+        """Cooperative cancellation: allow the current API lookup to finish."""
+        self._stop_after_current = True
 
     def call(self, app, path, method="GET", payload=None):
         c = self.connections[app]
@@ -280,6 +285,9 @@ class Worker(QThread):
                                 f"WARNING: {app.title()} library scan failed: {exc}; duplicate checks unavailable"
                             )
                 for i, line in enumerate(self.items, 1):
+                    if self._stop_after_current:
+                        self.progress.emit(f"Analysis stopped after {len(out)} of {len(self.items)} titles")
+                        break
                     hint, title, year = title_parts(line)
                     self.progress.emit(
                         f"[{i}/{len(self.items)}] Searching metadata: {title} (requested year: {year or 'unspecified'}, category: {hint or 'auto'})"
@@ -440,6 +448,11 @@ class Worker(QThread):
                         f"  {'Ready' if safe else 'Review' if top else 'Not found'}: {title}; candidates={len(matches)}; best={top['label'] if top else 'none'}"
                     )
                     self.row_progress.emit(i - 1, out[-1]["status"], out[-1]["message"])
+                if self._stop_after_current:
+                    for line in self.items[len(out):]:
+                        out.append({"input": line, "matches": [], "selected": -1,
+                                    "status": "skipped", "message": "Analysis stopped before lookup",
+                                    "action": "skip"})
                 self.finished_data.emit(out)
             elif self.task == "import":
                 results = []
@@ -894,6 +907,11 @@ class Main(QMainWindow):
         self.analyze_btn = QPushButton("Analyze titles (no changes)")
         self.analyze_btn.clicked.connect(self.analyze)
         v.addWidget(self.analyze_btn)
+        self.stop_analysis_btn = QPushButton("Stop after current title")
+        self.stop_analysis_btn.clicked.connect(self.stop_analysis)
+        self.stop_analysis_btn.setEnabled(False)
+        self.stop_analysis_btn.setStyleSheet("background-color:#9b2525;color:white;font-weight:bold;")
+        v.addWidget(self.stop_analysis_btn)
         self.clear_analysis_btn = QPushButton("Clear results and start new list")
         self.clear_analysis_btn.clicked.connect(self.clear_analysis)
         self.clear_analysis_btn.setEnabled(False)
@@ -1505,6 +1523,10 @@ class Main(QMainWindow):
         if done is not None:
             self.worker.finished_data.connect(done)
         self.worker.finished.connect(self.update_review_actions)
+        if task == "analyze":
+            self.stop_analysis_btn.setEnabled(True)
+            self.analyze_btn.setEnabled(False)
+            self.worker.finished.connect(self.analysis_worker_finished)
         if task == "library_scan":
             self.worker.finished.connect(lambda: self.library_scan_btn.setEnabled(True))
         if task == "discover":
@@ -2179,6 +2201,20 @@ class Main(QMainWindow):
             f"Starting analysis for {len(lines)} title(s); remaining on Bulk import tab."
         )
         self.run_worker("analyze", items=lines, done=self.analyzed)
+
+    def stop_analysis(self):
+        if not self.worker or not self.worker.isRunning() or self.worker.task != "analyze":
+            return
+        self.worker.request_stop_after_current()
+        self.stop_analysis_btn.setEnabled(False)
+        self.stop_analysis_btn.setText("Stopping after current title...")
+        self.logmsg("Stop requested; waiting for the active metadata lookup to finish")
+
+    def analysis_worker_finished(self):
+        self.stop_analysis_btn.setEnabled(False)
+        self.stop_analysis_btn.setText("Stop after current title")
+        self.analyze_btn.setEnabled(True)
+        self.update_review_actions()
 
     def analyzed(self, items):
         self.items = items
