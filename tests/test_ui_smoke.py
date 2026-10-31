@@ -520,7 +520,7 @@ class MainWindowSmokeTests(unittest.TestCase):
                     try:
                         window.items = [
                             {"input": "Movie A", "status": "skipped", "action": "skip",
-                             "matches": [{"label": "Movie A"}], "selected": 0,
+                             "matches": [{"label": "Movie A", "type": "movie", "app": "radarr", "data": {"title": "Movie A"}}], "selected": 0,
                              "message": "Excluded from import by user selection"},
                         ]
                         window.refresh()
