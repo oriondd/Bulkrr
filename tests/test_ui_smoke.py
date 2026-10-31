@@ -82,6 +82,26 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_genre_filter_is_reversible_and_does_not_queue_imports(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.discovered([
+                            {"title": "Horror Story", "type": "anime", "year": 2026, "genres": ["Horror"]},
+                            {"title": "Sports Story", "type": "anime", "year": 2025, "genres": ["Sports"]},
+                        ])
+                        window.genre_filter.setText("HORROR")
+                        window.filter_discovery_genre()
+                        self.assertEqual([x["title"] for x in window.discover_records], ["Horror Story"])
+                        self.assertEqual(len(window.discover_source_records), 2)
+                        window.reset_discovery_filter()
+                        self.assertEqual(len(window.discover_records), 2)
+                        self.assertEqual(window.input.toPlainText(), "")
+                    finally:
+                        window.close()
+
     def test_tmdb_worker_emits_metadata_without_importing(self):
         worker = bulkrr.Worker("trending_tmdb", {}, config={
             "kind": "movie", "access_token": "test-value",
