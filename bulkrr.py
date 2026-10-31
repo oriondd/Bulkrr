@@ -1,6 +1,6 @@
 import sys, json, re, os, difflib, urllib.request, urllib.parse, urllib.error, datetime, traceback, logging, copy
 from pathlib import Path
-from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize
+from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QPointF
 from PySide6.QtGui import (
     QColor,
     QBrush,
@@ -80,6 +80,33 @@ from bulkrr_sessions import save_review, load_review
 from bulkrr_calendar import fetch_schedule
 from bulkrr_collections import expand_collection
 from bulkrr_extensions import discover_manifests
+
+
+class CinematicHero(QWidget):
+    """Paint a restrained cinematic glow and star field behind dashboard content."""
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        width, height = self.width(), self.height()
+        if width <= 0 or height <= 0:
+            return
+        glow = QRadialGradient(width * 0.84, height * 0.32, max(width * 0.55, 1))
+        glow.setColorAt(0, QColor(146, 93, 248, 82))
+        glow.setColorAt(0.55, QColor(106, 75, 206, 32))
+        glow.setColorAt(1, QColor(106, 75, 206, 0))
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(glow)
+        painter.drawRoundedRect(self.rect().adjusted(2, 2, -2, -2), 20, 20)
+        for x_ratio, y_ratio, radius in (
+            (0.73, 0.19, 2.0), (0.88, 0.18, 1.3), (0.94, 0.47, 1.7),
+            (0.80, 0.68, 1.2), (0.67, 0.50, 1.1), (0.96, 0.77, 1.0),
+        ):
+            x, y = width * x_ratio, height * y_ratio
+            painter.setBrush(QColor(209, 191, 255, 135))
+            painter.drawEllipse(QPointF(x, y), radius, radius)
+        painter.end()
 
 
 class MediaPosterDelegate(QStyledItemDelegate):
@@ -1532,7 +1559,7 @@ class Main(QMainWindow):
         dashboard_layout = QVBoxLayout(dashboard)
         dashboard_layout.setSpacing(12)
         dashboard_layout.setContentsMargins(18, 18, 18, 18)
-        hero = QWidget()
+        hero = CinematicHero()
         hero.setObjectName("dashboardCinematicHero")
         hero_layout = QVBoxLayout(hero)
         hero_layout.setContentsMargins(28, 22, 28, 24)
