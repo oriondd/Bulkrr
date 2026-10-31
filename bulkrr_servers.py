@@ -217,3 +217,64 @@ def prepare_routed_import_batches(plans, items):
                              "duplicate_action": item.get("action", "skip")})
         batches.append({"profile": dict(profile), "items": prepared})
     return batches
+
+
+def preview_routed_import_batches(batches, fetch_library):
+    """Read-only duplicate-aware preview of prepared destination batches.
+
+    No writes are possible through this API. Validate all batches before any
+    library reads; report unavailable destinations without rerouting titles.
+    """
+    if not isinstance(batches, list) or not callable(fetch_library):
+        raise ValueError("Invalid routed preview")
+    validated = []
+    seen_profiles, seen_items = set(), set()
+    for batch in batches:
+        if not isinstance(batch, dict):
+            raise ValueError("Invalid destination batch")
+        profile = validate_profiles([batch.get("profile")])[0]
+        if profile["id"] in seen_profiles:
+            raise ValueError("Duplicate destination batch")
+        seen_profiles.add(profile["id"])
+        items = batch.get("items")
+        if not isinstance(items, list) or not items:
+            raise ValueError("Empty destination batch")
+        checked = []
+        for item in items:
+            if not isinstance(item, dict):
+                raise ValueError("Invalid routed title")
+            ident, metadata_id = item.get("item_id"), item.get("metadata_id")
+            payload = item.get("payload")
+            if (type(ident) is not int or ident <= 0 or ident in seen_items
+                    or type(metadata_id) is not int or metadata_id <= 0
+                    or not isinstance(payload, dict) or not payload.get("title")
+                    or not isinstance(payload.get("rootFolderPath"), str)
+                    or type(payload.get("qualityProfileId")) is not int):
+                raise ValueError("Invalid or duplicate routed title")
+            action = item.get("duplicate_action")
+            if action not in ("skip", "upgrade", "replace"):
+                raise ValueError("Invalid duplicate action")
+            seen_items.add(ident)
+            checked.append((ident, metadata_id, action))
+        validated.append((profile, checked))
+    if len(seen_items) > 500:
+        raise ValueError("Preview limited to 500 titles")
+    results = []
+    for profile, items in validated:
+        try:
+            records = fetch_library(profile)
+            if not isinstance(records, list):
+                raise ValueError("Invalid library response")
+            field = "tmdbId" if profile["kind"] == "radarr" else "tvdbId"
+            existing = {str(record.get(field)) for record in records if isinstance(record, dict)}
+            for ident, metadata_id, action in items:
+                duplicate = str(metadata_id) in existing
+                results.append({"profile_id": profile["id"], "item_id": ident,
+                                "action": action if duplicate else "add",
+                                "already_exists": duplicate, "error": None})
+        except Exception as exc:
+            for ident, _, _ in items:
+                results.append({"profile_id": profile["id"], "item_id": ident,
+                                "action": "blocked", "already_exists": None,
+                                "error": str(exc)})
+    return results
