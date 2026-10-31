@@ -1,6 +1,6 @@
 import sys, json, re, os, difflib, urllib.request, urllib.parse, urllib.error, datetime, traceback, logging, copy
 from pathlib import Path
-from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QPointF, QRect
+from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QRect
 from PySide6.QtGui import (
     QColor,
     QBrush,
@@ -83,7 +83,7 @@ from bulkrr_extensions import discover_manifests
 
 
 class CinematicHero(QWidget):
-    """Paint a restrained cinematic glow and star field behind dashboard content."""
+    """Subtle editorial spotlight for the Dashboard hero, without decorative particles."""
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -92,20 +92,13 @@ class CinematicHero(QWidget):
         width, height = self.width(), self.height()
         if width <= 0 or height <= 0:
             return
-        glow = QRadialGradient(width * 0.84, height * 0.32, max(width * 0.55, 1))
-        glow.setColorAt(0, QColor(146, 93, 248, 82))
-        glow.setColorAt(0.55, QColor(106, 75, 206, 32))
-        glow.setColorAt(1, QColor(106, 75, 206, 0))
+        glow = QRadialGradient(width * 0.86, height * 0.24, max(width * 0.64, 1))
+        glow.setColorAt(0, QColor(137, 92, 226, 72))
+        glow.setColorAt(0.55, QColor(94, 75, 188, 22))
+        glow.setColorAt(1, QColor(94, 75, 188, 0))
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(glow)
         painter.drawRoundedRect(self.rect().adjusted(2, 2, -2, -2), 20, 20)
-        for x_ratio, y_ratio, radius in (
-            (0.73, 0.19, 2.0), (0.88, 0.18, 1.3), (0.94, 0.47, 1.7),
-            (0.80, 0.68, 1.2), (0.67, 0.50, 1.1), (0.96, 0.77, 1.0),
-        ):
-            x, y = width * x_ratio, height * y_ratio
-            painter.setBrush(QColor(209, 191, 255, 135))
-            painter.drawEllipse(QPointF(x, y), radius, radius)
         painter.end()
 
 
