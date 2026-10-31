@@ -518,11 +518,7 @@ class Worker(QThread):
                                     isinstance(profile, float) and not profile.is_integer()
                                 ):
                                     raise ValueError("quality profile must be an integer")
-                                if isinstance(profile, bool) or (
-                            isinstance(profile, float) and not profile.is_integer()
-                        ):
-                            raise ValueError("quality profile must be an integer")
-                        profile_id = int(profile)
+                                profile_id = int(profile)
                                 if profile_id <= 0:
                                     raise ValueError("quality profile must be positive")
                             except (TypeError, ValueError, OverflowError):
@@ -655,6 +651,10 @@ class Worker(QThread):
                         )
                         continue
                     try:
+                        if isinstance(profile, bool) or (
+                            isinstance(profile, float) and not profile.is_integer()
+                        ):
+                            raise ValueError("quality profile must be an integer")
                         profile_id = int(profile)
                         if profile_id <= 0:
                             raise ValueError("quality profile must be positive")
