@@ -894,6 +894,10 @@ class Main(QMainWindow):
         self.analyze_btn = QPushButton("Analyze titles (no changes)")
         self.analyze_btn.clicked.connect(self.analyze)
         v.addWidget(self.analyze_btn)
+        self.clear_analysis_btn = QPushButton("Clear results and start new list")
+        self.clear_analysis_btn.clicked.connect(self.clear_analysis)
+        self.clear_analysis_btn.setEnabled(False)
+        v.addWidget(self.clear_analysis_btn)
         self.review_summary_label = QLabel(review_summary([]))
         self.review_summary_label.setWordWrap(True)
         self.review_summary_label.setObjectName("reviewSummary")
@@ -946,6 +950,12 @@ class Main(QMainWindow):
         self.duplicate_btn = QPushButton("Existing title: Skip / Upgrade / Replace")
         self.duplicate_btn.clicked.connect(self.duplicate_action)
         row.addWidget(self.duplicate_btn)
+        self.bulk_skip_btn = QPushButton("Skip all existing titles")
+        self.bulk_skip_btn.clicked.connect(self.skip_all_duplicates)
+        row.addWidget(self.bulk_skip_btn)
+        self.bulk_review_skip_btn = QPushButton("Skip all unresolved matches")
+        self.bulk_review_skip_btn.clicked.connect(self.skip_all_unresolved)
+        row.addWidget(self.bulk_review_skip_btn)
         self.review_btn = QPushButton("Confirm / change selected match")
         self.review_btn.clicked.connect(self.review)
         self.add_btn = QPushButton("Approve and import")
@@ -2258,6 +2268,12 @@ class Main(QMainWindow):
         self.add_btn.setEnabled(
             not busy and any(item.get("status") == "ready" for item in self.items)
         )
+        self.bulk_skip_btn.setEnabled(not busy and any(
+            item.get("status") == "duplicate" for item in self.items))
+        self.bulk_review_skip_btn.setEnabled(not busy and any(
+            item.get("status") in ("review", "error") for item in self.items))
+        self.clear_analysis_btn.setEnabled(not busy and bool(
+            self.items or self.input.toPlainText().strip()))
 
     def fetch_poster(self, match, target):
         url = poster_url(match)
@@ -2481,6 +2497,64 @@ class Main(QMainWindow):
         )
         self.refresh()
         self.table.selectRow(row)
+
+    def skip_all_duplicates(self):
+        if self.worker and self.worker.isRunning():
+            return
+        candidates = [item for item in self.items if item.get("duplicate")
+                      and item.get("status") == "duplicate"]
+        if not candidates:
+            return
+        if QMessageBox.question(
+            self, "Skip existing titles",
+            f"Skip {len(candidates)} existing library title(s)? No files will be changed.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        ) != QMessageBox.StandardButton.Yes:
+            return
+        for item in candidates:
+            item["action"] = "skip"
+            item["status"] = "skipped"
+            item["message"] = "Existing title — skipped in bulk (files preserved)"
+        self.logmsg(f"Bulk skipped {len(candidates)} existing library titles")
+        self.refresh()
+
+    def skip_all_unresolved(self):
+        if self.worker and self.worker.isRunning():
+            return
+        candidates = [item for item in self.items
+                      if item.get("status") in ("review", "error")]
+        if not candidates:
+            return
+        if QMessageBox.question(
+            self, "Skip unresolved matches",
+            f"Skip {len(candidates)} ambiguous or unmatched title(s)? "
+            "Only already-confirmed titles will remain eligible for import.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        ) != QMessageBox.StandardButton.Yes:
+            return
+        for item in candidates:
+            item["status"] = "skipped"
+            item["action"] = "skip"
+            item["message"] = "Unresolved match — skipped in bulk"
+        self.logmsg(f"Bulk skipped {len(candidates)} unresolved matches")
+        self.refresh()
+
+    def clear_analysis(self):
+        if self.worker and self.worker.isRunning():
+            return
+        if QMessageBox.question(
+            self, "Start new list",
+            "Clear the current input list and analysis results?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        ) != QMessageBox.StandardButton.Yes:
+            return
+        self.items = []
+        self.input.clear()
+        self.refresh()
+        self.logmsg("Cleared analysis and input list")
 
     def import_items(self):
         if self.worker and self.worker.isRunning():
