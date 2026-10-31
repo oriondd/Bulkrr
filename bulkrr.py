@@ -1684,7 +1684,7 @@ class Main(QMainWindow):
             routes = route_to_profiles(self.extra_profiles, assignments)
             import keyring
             secret = keyring.get_password("Bulkrr", "profile:" + profile["id"])
-        except (ValueError, Exception) as exc:
+        except Exception as exc:
             QMessageBox.warning(self, "Cannot check destination", str(exc))
             return
         if not secret:
@@ -1702,7 +1702,7 @@ class Main(QMainWindow):
             else:
                 messages.append(f"{result['profile_id']}: {result['library_count']} existing library records")
         QMessageBox.information(self, "Read-only destination checks",
-                                "\\n".join(messages) + "\\nNo imports or searches were requested.")
+                                "\n".join(messages) + "\nNo imports or searches were requested.")
 
     def activate_extra_server(self):
         row = self.extra_list.currentRow()
