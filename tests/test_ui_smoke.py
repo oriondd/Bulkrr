@@ -512,6 +512,29 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_import_uses_current_search_checkbox_without_saving(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.settings = {"search": True}
+                        window.server_data = {"connected": True}
+                        window.search.setChecked(False)
+                        window.items = [{
+                            "input": "movie: Alien", "status": "ready", "selected": 0,
+                            "matches": [{"label": "Alien", "type": "movie", "app": "radarr",
+                                         "data": {"title": "Alien"}}], "message": "Ready",
+                        }]
+                        window.refresh()
+                        with patch.object(bulkrr.QMessageBox, "question",
+                                          return_value=bulkrr.QMessageBox.StandardButton.Yes):
+                            with patch.object(window, "run_worker") as worker:
+                                window.import_items()
+                                self.assertEqual(worker.call_args.kwargs["config"]["search"], False)
+                    finally:
+                        window.close()
+
     def test_empty_single_title_recheck_does_not_leave_working_row(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
