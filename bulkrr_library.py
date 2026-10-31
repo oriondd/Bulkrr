@@ -53,3 +53,32 @@ def missing_series(series):
             "missing": missing,
         })
     return result
+
+
+
+def upgrade_movies(movies):
+    """Find Radarr movies whose existing file explicitly misses its quality cutoff.
+
+    A missing/unknown cutoff flag is *not* treated as upgrade eligible. This
+    is intentionally conservative and never changes the configured profile.
+    """
+    result = []
+    for movie in movies:
+        if not isinstance(movie, dict) or not movie.get("hasFile"):
+            continue
+        movie_file = movie.get("movieFile")
+        if not isinstance(movie_file, dict):
+            continue
+        if movie_file.get("qualityCutoffNotMet") is not True:
+            continue
+        ident = movie.get("id")
+        if type(ident) is not int or ident <= 0:
+            continue
+        result.append({
+            "id": ident,
+            "title": movie.get("title") or "Untitled movie",
+            "year": movie.get("year"),
+            "monitored": bool(movie.get("monitored", False)),
+            "status": "upgrade",
+        })
+    return result
