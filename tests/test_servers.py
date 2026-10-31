@@ -195,6 +195,50 @@ class ServerProfileTests(unittest.TestCase):
             preview_routed_import_batches(batches, lambda profile: calls.append(profile))
         self.assertEqual(calls, [])
 
+    def test_routed_add_execution_requires_explicit_approval(self):
+        from bulkrr_servers import execute_routed_adds
+        with self.assertRaises(PermissionError):
+            execute_routed_adds([], lambda _: [], lambda *args: None)
+
+    def test_routed_add_execution_skips_existing_and_isolates_destinations(self):
+        from bulkrr_servers import execute_routed_adds
+        def batch(name, ident):
+            return {"profile": {"id": name, "kind": "radarr",
+                                "url": "http://" + name + ":7878"},
+                    "items": [{"item_id": ident, "metadata_id": ident,
+                               "duplicate_action": "skip",
+                               "payload": {"title": "Film " + str(ident),
+                                           "rootFolderPath": "/movies",
+                                           "qualityProfileId": 3}}]}
+        batches = [batch("one", 1), batch("two", 2), batch("three", 3)]
+        writes = []
+        def fetch(profile):
+            if profile["id"] == "three":
+                raise ConnectionError("Offline")
+            return [{"tmdbId": 1}] if profile["id"] == "one" else []
+        def add(profile, endpoint, payload):
+            writes.append((profile["id"], endpoint, payload))
+        result = execute_routed_adds(batches, fetch, add, approved=True, search=False)
+        self.assertEqual([entry["status"] for entry in result],
+                         ["skipped", "added", "blocked"])
+        self.assertEqual(len(writes), 1)
+        self.assertEqual(writes[0][0:2], ("two", "movie"))
+        self.assertFalse(writes[0][2]["addOptions"]["searchForMovie"])
+
+    def test_routed_add_execution_rejects_bad_plan_before_writing(self):
+        from bulkrr_servers import execute_routed_adds
+        writes = []
+        batch = {"profile": {"id": "one", "kind": "sonarr",
+                             "url": "http://one:8989"},
+                 "items": [{"item_id": 1, "metadata_id": 1,
+                            "duplicate_action": "delete",
+                            "payload": {"title": "Show", "rootFolderPath": "/tv",
+                                        "qualityProfileId": 1}}]}
+        with self.assertRaisesRegex(ValueError, "duplicate action"):
+            execute_routed_adds([batch], lambda _: [],
+                                lambda *args: writes.append(args), approved=True)
+        self.assertEqual(writes, [])
+
 
 if __name__ == "__main__":
     unittest.main()
