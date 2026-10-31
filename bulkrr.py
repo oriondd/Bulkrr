@@ -1638,6 +1638,8 @@ class Main(QMainWindow):
         self.worker.row_progress.connect(self.row_update)
         if task == "analyze" and done == self.edited_title_analyzed:
             self.worker.failed.connect(self.edited_title_failed)
+        if task == "analyze" and done == self.resumed_analysis:
+            self.worker.failed.connect(self.resume_analysis_failed)
         self.worker.failed.connect(
             lambda e: (
                 self.connection_error() if task == "connect" else None,
@@ -2340,7 +2342,7 @@ class Main(QMainWindow):
         ]
         if not pending:
             return
-        self._resume_previous_items = list(self.items)
+        self._resume_previous_items = [dict(item) for item in self.items]
         self.active_analysis_rows = [
             index for index, item in enumerate(self.items)
             if item.get("message") == "Analysis stopped before lookup"
@@ -2348,6 +2350,16 @@ class Main(QMainWindow):
         self.resume_analysis_btn.setEnabled(False)
         self.logmsg(f"Resuming {len(pending)} unfinished title(s); completed results preserved")
         self.run_worker("analyze", items=pending, done=self.resumed_analysis)
+
+    def resume_analysis_failed(self, error):
+        """Restore review state if a partial resume fails before producing results."""
+        previous = getattr(self, "_resume_previous_items", [])
+        if previous:
+            self.items = previous
+            self._resume_previous_items = []
+            self.refresh()
+        self.active_analysis_rows = None
+        self.logmsg("Resume failed; previous review decisions were restored")
 
     def resumed_analysis(self, items):
         """Merge resumed results into their original positions, retaining unfinished rows."""
