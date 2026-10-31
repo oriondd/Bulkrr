@@ -669,7 +669,9 @@ class Main(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Bulkrr — 2.0 development preview")
-        self.setWindowIcon(QIcon(str(ASSET_DIR / "Bulkrr.ico")))
+        icon_path = ASSET_DIR / "Bulkrr.ico"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
         self.resize(1120, 800)
         self.connections = {}
         self.server_data = {}
@@ -1135,8 +1137,12 @@ class Main(QMainWindow):
 
     def load_extension(self):
         folder = APPDIR / "extensions"
-        folder.mkdir(parents=True, exist_ok=True)
-        found = discover_manifests(folder)
+        try:
+            folder.mkdir(parents=True, exist_ok=True)
+            found = discover_manifests(folder)
+        except OSError as exc:
+            QMessageBox.warning(self, "Extension directory unavailable", str(exc))
+            return
         if not found:
             QMessageBox.information(self, "No extensions", f"No valid JSON title-list extensions found in {folder}")
             return
