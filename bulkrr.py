@@ -581,6 +581,16 @@ class Worker(QThread):
                                     )
                                 )
                                 continue
+                            existing_id = found.get("id")
+                            if (
+                                isinstance(existing_id, bool)
+                                or not isinstance(existing_id, int)
+                                or existing_id <= 0
+                            ):
+                                results.append(
+                                    (item["input"], "red", "Invalid existing library ID; search not submitted")
+                                )
+                                continue
                             try:
                                 if app == "radarr":
                                     self.call(
