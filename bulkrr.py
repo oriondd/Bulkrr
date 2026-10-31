@@ -1275,14 +1275,32 @@ class Main(QMainWindow):
         row = self.extra_list.currentRow()
         if row < 0:
             return
-        profile = self.extra_profiles.pop(row)
+        profile = self.extra_profiles[row]
+        answer = QMessageBox.question(
+            self, "Remove server profile",
+            f"Remove saved profile '{profile['label']}'? This does not delete any Sonarr/Radarr library.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        updated = self.extra_profiles[:row] + self.extra_profiles[row + 1:]
+        try:
+            saved = dict(self.settings)
+            saved["extra_profiles"] = validate_profiles(updated)
+            APPDIR.mkdir(parents=True, exist_ok=True)
+            SETTINGS.write_text(json.dumps(saved, indent=2), encoding="utf-8")
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Could not remove profile", str(exc))
+            return
+        self.extra_profiles = updated
+        self.settings = saved
+        self.refresh_extra_list()
         try:
             import keyring
             keyring.delete_password("Bulkrr", "profile:" + profile["id"])
         except Exception:
-            pass
-        self.refresh_extra_list()
-        self.persist_extra_profiles()
+            self.logmsg("Profile removed; keyring cleanup was not available.")
 
     def connect_servers(self):
         if self.worker and self.worker.isRunning():
