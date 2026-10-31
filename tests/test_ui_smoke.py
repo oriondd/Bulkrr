@@ -336,6 +336,39 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_routed_import_worker_writes_only_approved_new_titles(self):
+        batch = {"profile": {"id": "films", "kind": "radarr",
+                             "url": "http://films:7878"},
+                 "items": [{"item_id": 1, "metadata_id": 22,
+                            "duplicate_action": "skip",
+                            "payload": {"title": "Film", "rootFolderPath": "/movies",
+                                        "qualityProfileId": 7}}]}
+        config = {"batches": [batch], "credentials": {"films": "secret"},
+                  "approved": True, "search": False}
+        worker = bulkrr.Worker("routed_import_execute", {}, config=config)
+        results, failures = [], []
+        worker.finished_data.connect(results.append)
+        worker.failed.connect(failures.append)
+        with patch.object(bulkrr, "get_json", side_effect=[
+            [], {"id": 100}]) as api:
+            worker.run()
+        self.assertEqual(failures, [])
+        self.assertEqual(results[0][0]["status"], "added")
+        self.assertEqual(api.call_count, 2)
+        self.assertEqual(api.call_args.args[3], "POST")
+        self.assertEqual(api.call_args.args[4]["qualityProfileId"], 7)
+        self.assertFalse(api.call_args.args[4]["addOptions"]["searchForMovie"])
+
+    def test_routed_import_worker_refuses_unapproved_writes(self):
+        worker = bulkrr.Worker("routed_import_execute", {}, config={
+            "batches": [], "credentials": {}, "approved": False})
+        failures = []
+        worker.failed.connect(failures.append)
+        with patch.object(bulkrr, "get_json") as api:
+            worker.run()
+        self.assertEqual(api.call_count, 0)
+        self.assertIn("PermissionError", failures[0])
+
 
 if __name__ == "__main__":
     unittest.main()
