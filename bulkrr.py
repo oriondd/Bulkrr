@@ -825,7 +825,7 @@ class Main(QMainWindow):
         check_routes = QPushButton("Check selected destination library")
         check_routes.clicked.connect(self.check_extra_routing)
         extra_buttons.addWidget(check_routes)
-        import_routes = QPushButton("Prepare and confirm selected destination imports")
+        import_routes = QPushButton("Route selected titles to servers and confirm imports")
         import_routes.clicked.connect(self.prepare_extra_import)
         extra_buttons.addWidget(import_routes)
         extra_row.addLayout(extra_buttons)
@@ -1728,56 +1728,73 @@ class Main(QMainWindow):
                                 "\n".join(messages) + "\nNo imports or searches were requested.")
 
     def prepare_extra_import(self):
-        """Require per-destination settings and preview before any server writes."""
+        """Explicitly assign each selected title to a destination server."""
         if self.worker and self.worker.isRunning():
             return
-        row = self.extra_list.currentRow()
-        if row < 0 or row >= len(self.extra_profiles):
-            QMessageBox.information(self, "Select destination", "Select an additional server.")
-            return
-        profile = self.extra_profiles[row]
         selection = self.table.selectionModel()
         rows = sorted({index.row() for index in selection.selectedRows()}) if selection else []
+        if not rows:
+            QMessageBox.information(self, "Select titles", "Select reviewed titles in the review table.")
+            return
         assignments = []
+        selected_profiles = {}
         for index in rows:
             if index >= len(self.items):
                 continue
             item = self.items[index]
             matches = item.get("matches") or []
             selected = item.get("selected", -1)
-            if (type(selected) is not int or selected < 0 or selected >= len(matches)
-                    or matches[selected].get("app") != profile["kind"]):
-                QMessageBox.warning(self, "Review required", "Review titles matching this server type first.")
+            if type(selected) is not int or selected < 0 or selected >= len(matches):
+                QMessageBox.warning(self, "Review required", "Review metadata for every selected title.")
                 return
-            assignments.append({"item_id": index + 1, "kind": profile["kind"],
-                                "profile_id": profile["id"]})
-        if not assignments:
-            QMessageBox.information(self, "Select titles", "Select reviewed titles in the review table.")
-            return
-        quality, ok = QInputDialog.getInt(self, "Destination quality profile",
-                                          "Quality profile ID for this server:", 1, 1, 999999)
-        if not ok:
-            return
-        folders = {}
-        for category in (("movie",) if profile["kind"] == "radarr" else ("tv", "anime")):
-            folder, ok = QInputDialog.getText(self, "Destination root folder",
-                                              f"{category.title()} root folder on {profile['label']}:")
+            match = matches[selected]
+            choices = [profile for profile in self.extra_profiles
+                       if profile["kind"] == match.get("app")]
+            if not choices:
+                QMessageBox.warning(self, "No matching server",
+                                    "Add a server profile matching the selected title type.")
+                return
+            labels = [f"{p['label']} ({p['id']})" for p in choices]
+            destination, ok = QInputDialog.getItem(
+                self, "Choose title destination",
+                f"Destination for {match.get('data', {}).get('title', item.get('input', 'title'))}:",
+                labels, 0, False)
             if not ok:
                 return
-            folders[category] = folder.strip()
+            profile = choices[labels.index(destination)]
+            selected_profiles[profile["id"]] = profile
+            assignments.append({"item_id": index + 1, "kind": profile["kind"],
+                                "profile_id": profile["id"]})
+        destinations = {}
+        credentials = {}
         try:
-            plans = plan_routed_imports(self.extra_profiles, assignments, {
-                profile["id"]: {"quality_profile_id": quality, "root_folders": folders}})
-            batches = prepare_routed_import_batches(plans, self.items)
             import keyring
-            secret = keyring.get_password("Bulkrr", "profile:" + profile["id"])
-            if not secret:
-                raise ValueError("Destination API key unavailable in system keyring")
+            for profile in selected_profiles.values():
+                secret = keyring.get_password("Bulkrr", "profile:" + profile["id"])
+                if not secret:
+                    raise ValueError("Missing API key for " + profile["label"])
+                credentials[profile["id"]] = secret
+                quality, ok = QInputDialog.getInt(
+                    self, "Destination quality profile",
+                    f"Quality profile ID for {profile['label']}:", 1, 1, 999999)
+                if not ok:
+                    return
+                folders = {}
+                for category in (("movie",) if profile["kind"] == "radarr" else ("tv", "anime")):
+                    folder, ok = QInputDialog.getText(
+                        self, "Destination root folder",
+                        f"{category.title()} root folder on {profile['label']}:")
+                    if not ok:
+                        return
+                    folders[category] = folder.strip()
+                destinations[profile["id"]] = {
+                    "quality_profile_id": quality, "root_folders": folders}
+            plans = plan_routed_imports(self.extra_profiles, assignments, destinations)
+            batches = prepare_routed_import_batches(plans, self.items)
         except Exception as exc:
             QMessageBox.warning(self, "Invalid destination plan", str(exc))
             return
-        self.pending_routed_import = {"batches": batches,
-                                      "credentials": {profile["id"]: secret}}
+        self.pending_routed_import = {"batches": batches, "credentials": credentials}
         self.run_worker("routed_import_preview", config=self.pending_routed_import,
                         done=self.routed_import_previewed)
 
