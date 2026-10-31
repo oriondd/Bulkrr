@@ -70,7 +70,7 @@ from bulkrr_tmdb import fetch_trending, fetch_collection, search_collections
 from bulkrr_recommendations import rank_candidates
 from bulkrr_genres import favorite_genres
 from bulkrr_settings import write_settings
-from bulkrr_servers import validate_profiles, legacy_profiles
+from bulkrr_servers import validate_profiles, legacy_profiles, route_to_profiles
 from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
 from bulkrr_calendar import fetch_schedule
@@ -788,6 +788,9 @@ class Main(QMainWindow):
         activate_extra = QPushButton("Use selected server")
         activate_extra.clicked.connect(self.activate_extra_server)
         extra_buttons.addWidget(activate_extra)
+        route_preview = QPushButton("Preview routing of selected review titles")
+        route_preview.clicked.connect(self.preview_extra_routing)
+        extra_buttons.addWidget(route_preview)
         extra_row.addLayout(extra_buttons)
         self.setup_layout.addWidget(QLabel("Additional Sonarr / Radarr instances"))
         self.setup_layout.addLayout(extra_row)
@@ -1588,6 +1591,51 @@ class Main(QMainWindow):
         self.extra_profiles = updated
         self.settings = saved
         self.refresh_extra_list()
+
+    def preview_extra_routing(self):
+        """Show a non-executing routing preview for explicitly selected titles."""
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the active operation.")
+            return
+        profile_row = self.extra_list.currentRow()
+        if profile_row < 0 or profile_row >= len(self.extra_profiles):
+            QMessageBox.information(self, "Select destination", "Select an additional server profile first.")
+            return
+        profile = self.extra_profiles[profile_row]
+        selection = self.table.selectionModel()
+        rows = sorted({index.row() for index in selection.selectedRows()}) if selection else []
+        assignments = []
+        for row in rows:
+            if row >= len(self.items):
+                continue
+            item = self.items[row]
+            matches = item.get("matches") or []
+            index = item.get("selected", -1)
+            if type(index) is not int or index < 0 or index >= len(matches):
+                QMessageBox.warning(self, "Review required", "Every selected title needs a confirmed metadata match.")
+                return
+            match = matches[index]
+            kind = match.get("app") if isinstance(match, dict) else None
+            if kind != profile["kind"]:
+                QMessageBox.warning(self, "Server mismatch",
+                                    "All selected titles must match the destination server type.")
+                return
+            assignments.append({"item_id": row + 1, "kind": kind, "profile_id": profile["id"]})
+        if not assignments:
+            QMessageBox.information(self, "Select titles", "Select review-table rows to preview.")
+            return
+        try:
+            routes = route_to_profiles(self.extra_profiles, assignments)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Invalid routing plan", str(exc))
+            return
+        count = sum(len(route["item_ids"]) for route in routes)
+        QMessageBox.information(
+            self, "Read-only routing preview",
+            f"{count} selected title(s) would route to {profile['label']} ({profile['kind'].title()}) "
+            f"at {profile['url']}. No server requests or imports have been made. "
+            "To use this destination now, activate the profile and reconnect; simultaneous routing is not yet enabled.",
+        )
 
     def activate_extra_server(self):
         row = self.extra_list.currentRow()
