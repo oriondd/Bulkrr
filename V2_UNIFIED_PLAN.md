@@ -28,7 +28,8 @@ This branch combines Phase 3 (library management), Phase 4 (discovery), and Phas
   conservative Radarr movie upgrades only when the API explicitly reports
   that a downloaded file is below the quality cutoff.
 - Named server profiles, saved review snapshots, lookup discovery, public
-  AniList trending anime, local keyword-based ranking of discovered titles, and local recommendations\n  based on genre frequencies in connected libraries.
+  AniList trending anime, local keyword-based ranking of discovered titles, and local recommendations
+  based on genre frequencies in connected libraries.
 - US TVMaze episode schedule, title-based franchise candidates, declarative
   title-list extensions, update links, and Windows portable/installer previews.
 - Cross-platform test matrix and an additional headless Qt startup smoke test.
@@ -38,7 +39,8 @@ This branch combines Phase 3 (library management), Phase 4 (discovery), and Phas
 - Sonarr episode-level quality upgrade identification is not yet implemented.
 - Trending movie/TV ranking requires a reliable live data source; title lookup
   is not presented as trending.
-- Local recommendations use only genre frequencies in connected library\n  metadata; viewing history and playback activity are not collected.
+- Local recommendations use only genre frequencies in connected library
+  metadata; viewing history and playback activity are not collected.
 - Franchise matching is title-based, not authoritative TMDB collection lookup.
 - Named server profiles switch the active destination; simultaneous multi-server
   import routing is not implemented.
