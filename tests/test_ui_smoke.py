@@ -259,6 +259,22 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_routed_library_check_worker_reads_only_selected_profile(self):
+        worker = bulkrr.Worker("routed_library_check", {}, config={
+            "routes": [{"profile": {"id": "anime", "kind": "sonarr",
+                                    "url": "http://anime:8989", "label": "Anime"},
+                        "item_ids": [1]}],
+            "credentials": {"anime": "test-secret"},
+        })
+        results, failures = [], []
+        worker.finished_data.connect(results.append)
+        worker.failed.connect(failures.append)
+        with patch.object(bulkrr, "get_json", return_value=[{"id": 2}]) as api:
+            worker.run()
+        api.assert_called_once_with("http://anime:8989", "test-secret", "series")
+        self.assertEqual(results[0][0]["library_count"], 1)
+        self.assertEqual(failures, [])
+
     def test_new_phase_tabs_and_actions_construct_without_network(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
