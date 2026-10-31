@@ -292,6 +292,29 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_refresh_handles_partial_match_metadata(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [{
+                            "input": "Fallback Title",
+                            "matches": [{"app": "radarr", "type": "movie",
+                                         "id": 22, "data": {"title": "Film"}}],
+                            "selected": 0, "status": "ready"
+                        }]
+                        window.refresh()
+                        self.assertEqual(window.table.item(0, 2).text(), "Film")
+                        window.table.selectRow(0)
+                        window.show_selected_poster()
+                        self.assertIn("Film", window.preview_info.text())
+                        window.items[0]["matches"] = [{"app": "sonarr", "type": "tv", "id": 11}]
+                        window.refresh()
+                        self.assertEqual(window.table.item(0, 2).text(), "Fallback Title")
+                    finally:
+                        window.close()
+
     def test_multi_destination_gui_prepares_separate_batches_without_api_calls(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
