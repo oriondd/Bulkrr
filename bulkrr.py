@@ -794,8 +794,19 @@ class Main(QMainWindow):
         self.header_status.setObjectName("appSubtitle")
         header_layout.addWidget(self.header_status)
         shell_layout.addWidget(header)
+        workspace = QHBoxLayout()
+        workspace.setSpacing(12)
+        self.navigation = QListWidget()
+        self.navigation.setObjectName("mainNavigation")
+        self.navigation.setFixedWidth(176)
+        self.navigation.addItems(["Connections", "Import & Review", "Library", "Discover", "Activity Log"])
+        workspace.addWidget(self.navigation)
         tabs = QTabWidget()
-        shell_layout.addWidget(tabs, 1)
+        tabs.tabBar().hide()
+        workspace.addWidget(tabs, 1)
+        shell_layout.addLayout(workspace, 1)
+        self.navigation.currentRowChanged.connect(tabs.setCurrentIndex)
+        tabs.currentChanged.connect(self.navigation.setCurrentRow)
         self.setCentralWidget(shell)
         setup = QWidget()
         self.setup_layout = QVBoxLayout(setup)
@@ -950,6 +961,14 @@ class Main(QMainWindow):
         self.review_summary_label.setWordWrap(True)
         self.review_summary_label.setObjectName("reviewSummary")
         v.addWidget(self.review_summary_label)
+        filter_row = QHBoxLayout()
+        filter_row.addWidget(QLabel("Show results:"))
+        self.review_filter = QComboBox()
+        self.review_filter.addItems(["All titles", "Needs review", "Ready", "Skipped / excluded", "Unmatched"])
+        self.review_filter.currentIndexChanged.connect(self.apply_review_filter)
+        filter_row.addWidget(self.review_filter)
+        filter_row.addStretch()
+        v.addLayout(filter_row)
         self.table = QTableWidget(0, 7)
         self.table.setHorizontalHeaderLabels(
             [
@@ -1120,6 +1139,7 @@ class Main(QMainWindow):
         )
         tabs.addTab(self.log, "Activity log")
         self.tabs = tabs
+        self.navigation.setCurrentRow(1)
         self.statusBar().showMessage("Connect to Radarr/Sonarr to begin")
         self.setStyleSheet(DARK_THEME)
         self.update_review_actions()
@@ -2354,9 +2374,25 @@ class Main(QMainWindow):
         if 0 <= previous_row < len(self.items):
             self.table.selectRow(previous_row)
         self.table.blockSignals(False)
+        self.apply_review_filter()
         self.table.viewport().update()
         self.show_selected_poster()
         self.update_review_actions()
+
+    def apply_review_filter(self, *_):
+        if not hasattr(self, "table") or not hasattr(self, "review_filter"):
+            return
+        choice = self.review_filter.currentIndex()
+        for row, item in enumerate(self.items):
+            status = item.get("status")
+            show = (
+                choice == 0
+                or choice == 1 and status in ("review", "duplicate", "error", "failed")
+                or choice == 2 and status == "ready"
+                or choice == 3 and status == "skipped"
+                or choice == 4 and not item.get("matches")
+            )
+            self.table.setRowHidden(row, not show)
 
     def update_review_actions(self):
         row = self.table.currentRow()
