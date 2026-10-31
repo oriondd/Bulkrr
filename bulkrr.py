@@ -1139,6 +1139,10 @@ class Main(QMainWindow):
         self.items = []
         self.library_entries = []
         self.library_counts = (0, 0)
+        if hasattr(self, "library_layout_table"):
+            self.library_layout_table.setRowCount(0)
+        if hasattr(self, "library_summary"):
+            self.library_summary.setText("Reconnect and scan to refresh library inventory")
         self.refresh()
         for combo in self.combo.values():
             combo.clear()
@@ -1326,6 +1330,10 @@ class Main(QMainWindow):
         self.items = []
         self.library_entries = []
         self.library_counts = (0, 0)
+        if hasattr(self, "library_layout_table"):
+            self.library_layout_table.setRowCount(0)
+        if hasattr(self, "library_summary"):
+            self.library_summary.setText("Reconnect and scan to refresh library inventory")
         self.refresh()
         for combo in self.combo.values():
             combo.clear()
