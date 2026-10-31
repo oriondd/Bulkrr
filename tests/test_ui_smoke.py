@@ -578,6 +578,25 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_review_refresh_retains_input_order_when_sorting_enabled(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "movie: Zebra", "status": "ready",
+                             "matches": [], "selected": -1, "message": "Ready"},
+                            {"input": "movie: Alpha", "status": "ready",
+                             "matches": [], "selected": -1, "message": "Ready"},
+                        ]
+                        window.table.setSortingEnabled(True)
+                        window.refresh()
+                        self.assertTrue(window.table.isSortingEnabled())
+                        self.assertEqual(window.table.rowCount(), 2)
+                    finally:
+                        window.close()
+
     def test_review_filter_skips_redundant_visibility_changes(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
