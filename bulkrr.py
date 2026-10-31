@@ -2492,7 +2492,8 @@ class Main(QMainWindow):
                 )
                 title = (match or {}).get("label") or (match or {}).get("data", {}).get("title", "")
                 show = show and search in (item.get("input", "") + " " + title).casefold()
-            self.table.setRowHidden(row, not show)
+            if self.table.isRowHidden(row) == show:
+                self.table.setRowHidden(row, not show)
             visible += int(show)
         self.review_visible_count.setText(f"{visible:,} of {len(self.items):,} shown")
 
