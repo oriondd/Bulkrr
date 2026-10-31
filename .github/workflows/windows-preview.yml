@@ -47,6 +47,30 @@ jobs:
           if (-not (Test-Path $compiler)) { throw "Inno Setup compiler missing at $compiler" }
           & $compiler installer.iss
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
+      - name: Verify packaged Windows executables
+        shell: pwsh
+        run: |
+          $portable = "dist/Bulkrr-2.0-preview/Bulkrr-2.0-preview.exe"
+          $installer = "installer-dist/Bulkrr-2.0-Windows-setup-preview.exe"
+          foreach ($path in @($portable, $installer)) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Missing packaged executable: $path"
+            }
+            $file = Get-Item -LiteralPath $path
+            if ($file.Length -lt 1024) {
+              throw "Packaged executable is unexpectedly small: $path ($($file.Length) bytes)"
+            }
+            $stream = [System.IO.File]::OpenRead($file.FullName)
+            try {
+              $magic = New-Object byte[] 2
+              if ($stream.Read($magic, 0, 2) -ne 2 -or $magic[0] -ne 0x4D -or $magic[1] -ne 0x5A) {
+                throw "Packaged output is not a Windows PE executable: $path"
+              }
+            } finally {
+              $stream.Dispose()
+            }
+            Write-Host "Verified $path ($($file.Length) bytes)"
+          }
       - name: Upload Windows installer preview
         uses: actions/upload-artifact@v4
         with:
