@@ -12,6 +12,8 @@ permissions:
 jobs:
   windows-preview:
     runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
