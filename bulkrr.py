@@ -2940,9 +2940,12 @@ class Main(QMainWindow):
             )
             return
         dry_run = self.dry_run.isChecked()
+        # The visible checkbox is authoritative for this import, even if the
+        # user has not saved connection preferences again.
+        search_after_approval = self.search.isChecked()
         action = (
             "and request searches for missing content"
-            if self.settings.get("search", True)
+            if search_after_approval
             else "without starting searches"
         )
         if (
@@ -2964,7 +2967,7 @@ class Main(QMainWindow):
             if item["status"] == "ready" and item["selected"] >= 0
         ]
         self.logmsg(
-            f"Import approved for {len(pending)} titles; automatic searches={'on' if self.settings.get('search',True) else 'off'}"
+            f"Import approved for {len(pending)} titles; automatic searches={'on' if search_after_approval else 'off'}"
         )
         for item in pending:
             item["status"] = "working"
@@ -2973,7 +2976,7 @@ class Main(QMainWindow):
         self.run_worker(
             "import",
             items=pending,
-            config={**self.settings, "dry_run": dry_run},
+            config={**self.settings, "dry_run": dry_run, "search": search_after_approval},
             done=self.imported,
         )
 
