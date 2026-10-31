@@ -51,6 +51,18 @@ QLabel#reviewSummary {
     background: #192640; border: 1px solid #574b9c; border-radius: 10px;
     padding: 14px; color: #e0dafa; font-weight: 600;
 }
+QListWidget#mainNavigation {
+    background: #10192a; border: 1px solid #283852;
+    border-radius: 12px; padding: 8px; font-size: 14px;
+}
+QListWidget#mainNavigation::item {
+    border-radius: 8px; padding: 14px 10px; margin: 3px;
+    color: #b9c7df;
+}
+QListWidget#mainNavigation::item:selected {
+    background: #453a96; color: #fff;
+}
+QListWidget#mainNavigation::item:hover:!selected { background: #22314b; }
 QLabel#categoryPolicy {
     background: #14243a; color: #b8c9e5; border: 1px solid #34496b;
     border-radius: 8px; padding: 10px;
