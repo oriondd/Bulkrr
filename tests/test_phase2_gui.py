@@ -7,14 +7,14 @@ from pathlib import Path
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PySide6.QtWidgets import QApplication
+from qt_app import APP
 from bulkrr import Main
 
 
 class Phase2GuiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = QApplication.instance() or QApplication([])
+        cls.app = APP
 
     def setUp(self):
         self.window = Main()
