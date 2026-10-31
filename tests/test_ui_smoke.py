@@ -82,6 +82,21 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_tmdb_worker_emits_metadata_without_importing(self):
+        worker = bulkrr.Worker("trending_tmdb", {}, config={
+            "kind": "movie", "access_token": "test-value",
+        })
+        found, failures = [], []
+        worker.finished_data.connect(found.append)
+        worker.failed.connect(failures.append)
+        sample = [{"title": "Example", "type": "movie", "year": 2026,
+                   "genres": ["Mystery"]}]
+        with patch.object(bulkrr, "fetch_trending", return_value=sample) as provider:
+            worker.run()
+        provider.assert_called_once_with("movie", "test-value")
+        self.assertEqual(found, [sample])
+        self.assertEqual(failures, [])
+
     def test_tmdb_discovery_requires_explicit_token_and_never_starts_on_cancel(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
