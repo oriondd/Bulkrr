@@ -1517,13 +1517,12 @@ class Main(QMainWindow):
         self.discover_detail_overview.setWordWrap(True)
         self.discover_detail_overview.setTextFormat(Qt.TextFormat.PlainText)
         self.discover_detail_overview.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.discover_detail_overview.setSizePolicy(
-            self.discover_detail_overview.sizePolicy().Policy.Preferred,
-            self.discover_detail_overview.sizePolicy().Policy.Maximum,
-        )
+        self.discover_detail_overview.setMinimumWidth(0)
         detail_scroll = QScrollArea()
         detail_scroll.setObjectName("discoverSynopsisScroll")
         detail_scroll.setWidgetResizable(True)
+        detail_scroll.setMinimumHeight(90)
+        detail_scroll.setMaximumHeight(205)
         detail_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
         detail_scroll.setWidget(self.discover_detail_overview)
         detail_layout.addWidget(detail_scroll, 1)
@@ -1653,7 +1652,13 @@ class Main(QMainWindow):
         )
         dashboard_layout.addWidget(self.dashboard_featured)
         dashboard_layout.addStretch()
-        tabs.insertTab(0, dashboard, "Dashboard")
+        dashboard_scroll = QScrollArea()
+        dashboard_scroll.setObjectName("dashboardScroll")
+        dashboard_scroll.setWidgetResizable(True)
+        dashboard_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        dashboard_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        dashboard_scroll.setWidget(dashboard)
+        tabs.insertTab(0, dashboard_scroll, "Dashboard")
         self.tabs = tabs
         # Keep dense pages usable without relying on hidden tab navigation.
         for page_index in range(tabs.count()):
