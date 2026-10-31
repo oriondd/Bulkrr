@@ -167,6 +167,34 @@ class ServerProfileTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "explicit metadata"):
             prepare_routed_import_batches(plans, [{"matches": [], "selected": -1}])
 
+    def test_routed_batch_preview_detects_duplicates_without_writes(self):
+        from bulkrr_servers import preview_routed_import_batches
+        batches = [{"profile": {"id": "movies", "kind": "radarr", "url": "http://movies:7878"},
+                    "items": [{"item_id": 1, "metadata_id": 99,
+                               "duplicate_action": "skip",
+                               "payload": {"title": "Film", "rootFolderPath": "/movies",
+                                           "qualityProfileId": 3}}]}]
+        calls = []
+        def fetch(profile):
+            calls.append(profile["id"])
+            return [{"tmdbId": 99}]
+        result = preview_routed_import_batches(batches, fetch)
+        self.assertEqual(calls, ["movies"])
+        self.assertEqual(result[0]["action"], "skip")
+        self.assertTrue(result[0]["already_exists"])
+
+    def test_routed_batch_preview_rejects_invalid_actions_before_fetch(self):
+        from bulkrr_servers import preview_routed_import_batches
+        batches = [{"profile": {"id": "movies", "kind": "radarr", "url": "http://movies:7878"},
+                    "items": [{"item_id": 1, "metadata_id": 99,
+                               "duplicate_action": "delete",
+                               "payload": {"title": "Film", "rootFolderPath": "/movies",
+                                           "qualityProfileId": 3}}]}]
+        calls = []
+        with self.assertRaisesRegex(ValueError, "duplicate action"):
+            preview_routed_import_batches(batches, lambda profile: calls.append(profile))
+        self.assertEqual(calls, [])
+
 
 if __name__ == "__main__":
     unittest.main()
