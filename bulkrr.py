@@ -64,6 +64,7 @@ from bulkrr_theme import DARK_THEME
 from bulkrr_library import missing_movies, missing_series
 from bulkrr_bulk import plan_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
+from bulkrr_trending import fetch_trending_anime
 from bulkrr_servers import validate_profiles, legacy_profiles
 from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
@@ -153,6 +154,8 @@ class Worker(QThread):
                 term = urllib.parse.quote(self.config["term"])
                 matches = self.call("radarr", f"movie/lookup?term={term}")
                 self.finished_data.emit(expand_collection(matches[:100]))
+            elif self.task == "trending_anime":
+                self.finished_data.emit(fetch_trending_anime())
             elif self.task == "release_calendar":
                 self.finished_data.emit(fetch_schedule())
             elif self.task == "discover":
@@ -911,6 +914,9 @@ class Main(QMainWindow):
         self.discover_button = QPushButton("Find titles")
         self.discover_button.clicked.connect(self.discover_titles)
         discover_layout.addWidget(self.discover_button)
+        self.trending_anime_button = QPushButton("Explore trending anime (AniList)")
+        self.trending_anime_button.clicked.connect(self.load_trending_anime)
+        discover_layout.addWidget(self.trending_anime_button)
         self.discover_results = QListWidget()
         self.discover_results.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         discover_layout.addWidget(self.discover_results)
@@ -1015,6 +1021,17 @@ class Main(QMainWindow):
             return
         self.discover_button.setEnabled(False)
         self.run_worker("discover", config={"kind": self.discover_kind.currentText(), "term": term}, done=self.discovered)
+
+    def load_trending_anime(self):
+        if self.worker and self.worker.isRunning():
+            return
+        self.trending_anime_button.setEnabled(False)
+        self.run_worker("trending_anime", done=self.trending_anime_loaded)
+
+    def trending_anime_loaded(self, records):
+        self.trending_anime_button.setEnabled(True)
+        self.discovered(records)
+        self.logmsg("Trending anime results supplied by AniList; review titles before importing")
 
     def discovered(self, records):
         self.discover_button.setEnabled(True)
@@ -1131,6 +1148,8 @@ class Main(QMainWindow):
             self.worker.finished.connect(lambda: self.library_scan_btn.setEnabled(True))
         if task == "discover":
             self.worker.finished.connect(lambda: self.discover_button.setEnabled(True))
+        if task == "trending_anime":
+            self.worker.finished.connect(lambda: self.trending_anime_button.setEnabled(True))
         self.worker.start()
         self.update_review_actions()
 
