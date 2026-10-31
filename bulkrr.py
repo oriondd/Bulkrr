@@ -1812,13 +1812,17 @@ class Main(QMainWindow):
             return
         pix = QPixmap()
         if pix.loadFromData(data):
-            is_featured = self.dashboard_featured.row(item) >= 0
-            target_size = QSize(90, 128) if is_featured else QSize(132, 188)
-            item.setIcon(QIcon(pix.scaled(
-                target_size,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )))
+            try:
+                is_featured = self.dashboard_featured.row(item) >= 0
+                target_size = QSize(90, 128) if is_featured else QSize(132, 188)
+                item.setIcon(QIcon(pix.scaled(
+                    target_size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )))
+            except RuntimeError:
+                # A refresh can invalidate a Qt item before icon assignment.
+                return
 
 
     def show_discovery_details(self, row):
@@ -3174,6 +3178,10 @@ class Main(QMainWindow):
     def poster_loaded(self, url, data, error):
         if data:
             self.poster_cache[url] = data
+            # Bound memory use during extended Discover browsing sessions.
+            # The active poster remains available through its Qt icon/pixmap.
+            while len(self.poster_cache) > 160:
+                self.poster_cache.pop(next(iter(self.poster_cache)))
         for target in self.poster_inflight.pop(url, []):
             if isinstance(target, QListWidgetItem):
                 self.apply_discovery_artwork(target, url, data)
