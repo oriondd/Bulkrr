@@ -2,6 +2,10 @@
 
 DARK_THEME = """
 QMainWindow, QWidget { background: #0b101b; color: #e8edf9; font-size: 13px; }
+QWidget:disabled { color: #8995ad; }
+QToolTip { background: #202c42; color: #f2f5ff; border: 1px solid #657394; padding: 6px; }
+QSplitter::handle { background: #263650; }
+QSplitter::handle:hover { background: #6d57df; }
 QMainWindow { background: #080d16; }
 QLabel { background: transparent; }
 QLabel#appTitle { color: #ffffff; font-size: 27px; font-weight: 800; }
@@ -20,6 +24,17 @@ QPushButton {
     border-radius: 8px; padding: 10px 14px; font-weight: 600;
 }
 QPushButton:hover { background: #806cf0; }
+QPushButton:focus { border: 2px solid #c5b8ff; }
+QLineEdit:disabled, QTextEdit:disabled, QComboBox:disabled { background: #111927; color: #8995ad; }
+QComboBox::drop-down { border: none; width: 24px; }
+QComboBox QAbstractItemView { background: #172238; color: #f2f5ff; selection-background-color: #5141b4; }
+QCheckBox { spacing: 8px; background: transparent; }
+QCheckBox::indicator { width: 17px; height: 17px; }
+QTableWidget::item { padding: 5px 7px; }
+QTableWidget::item:selected { background: #5141a0; color: #ffffff; }
+QTableCornerButton::section { background: #1b2940; border: none; }
+QScrollBar:horizontal { background: #111b2b; height: 11px; }
+QScrollBar::handle:horizontal { background: #445675; border-radius: 5px; min-width: 28px; }
 QPushButton:pressed { background: #5141b4; }
 QPushButton:disabled { background: #273246; border-color: #273246; color: #8895ac; }
 QPushButton#secondaryAction { background: #172238; border-color: #364665; }
