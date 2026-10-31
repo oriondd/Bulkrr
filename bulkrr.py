@@ -1399,7 +1399,6 @@ class Main(QMainWindow):
         self.discover_detail_poster.setObjectName("detailPoster")
         self.discover_detail_poster.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.discover_detail_poster.setFixedSize(172, 242)
-        self.discover_detail_poster.setSizePolicy(self.discover_detail_poster.sizePolicy().Policy.Fixed, self.discover_detail_poster.sizePolicy().Policy.Fixed)
         detail_layout.addWidget(self.discover_detail_poster, 0, Qt.AlignmentFlag.AlignHCenter)
         self.discover_detail_title = QLabel("Choose a poster to explore")
         self.discover_detail_title.setObjectName("detailTitle")
