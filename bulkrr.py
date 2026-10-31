@@ -458,6 +458,7 @@ class Worker(QThread):
                 results = []
                 # Cache a library snapshot per destination for this batch.
                 existing_by_app = {}
+                added_in_batch = set()
                 for i, item in enumerate(self.items, 1):
                     m = item["matches"][item["selected"]]
                     app = m["app"]
@@ -527,6 +528,14 @@ class Worker(QThread):
                         )
                         continue
                     if found:
+                        if (app, str(m["id"])) in added_in_batch:
+                            results.append(
+                                (item["input"], "green", "Skipped existing library title")
+                            )
+                            self.progress.emit(
+                                f"  Skipped title already added in this batch: {obj['title']}"
+                            )
+                            continue
                         action = item.get("action", "skip")
                         if action not in ("skip", "upgrade", "replace"):
                             results.append(
@@ -638,6 +647,7 @@ class Worker(QThread):
                     )
                     try:
                         added = self.call(app, endpoint, "POST", obj)
+                        added_in_batch.add((app, str(m["id"])))
                         # Keep the cached snapshot current after additions.
                         if (
                             isinstance(added, dict)
