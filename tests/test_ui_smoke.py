@@ -102,6 +102,30 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_collection_name_search_requires_token_and_only_returns_ids(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        with patch.object(bulkrr.QInputDialog, "getText",
+                                          side_effect=[("Star Wars", True), ("test-token", True)]):
+                            with patch.object(window, "run_worker") as worker:
+                                window.search_tmdb_collections()
+                                worker.assert_called_once_with(
+                                    "tmdb_collection_search",
+                                    config={"term": "Star Wars", "access_token": "test-token"},
+                                    done=window.tmdb_collections_found,
+                                )
+                        with patch.object(bulkrr.QInputDialog, "getItem",
+                                          return_value=("Example Collection (TMDB ID: 42)", True)):
+                            with patch.object(bulkrr.QMessageBox, "information") as notice:
+                                window.tmdb_collections_found([{"id": 42, "name": "Example Collection"}])
+                                self.assertIn("42", notice.call_args.args[2])
+                        self.assertEqual(window.input.toPlainText(), "")
+                    finally:
+                        window.close()
+
     def test_verified_collection_requires_id_and_token_and_stays_read_only(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
