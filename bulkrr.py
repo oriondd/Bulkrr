@@ -2488,6 +2488,28 @@ class Main(QMainWindow):
         self.show_selected_poster()
         self.update_review_actions()
 
+    def review_row_visible(self, item, choice=None, search=None):
+        """Evaluate one row without traversing the entire review batch."""
+        if choice is None:
+            choice = self.review_filter.currentIndex()
+        if search is None:
+            search = self.review_search.text().strip().casefold()
+        status = item.get("status")
+        show = (
+            choice == 0
+            or choice == 1 and status in ("review", "duplicate", "error", "failed")
+            or choice == 2 and status == "ready"
+            or choice == 3 and status == "skipped"
+            or choice == 4 and not item.get("matches")
+        )
+        if search and show:
+            matches = item.get("matches") or []
+            selected = item.get("selected", -1)
+            match = matches[selected] if isinstance(selected, int) and 0 <= selected < len(matches) else None
+            title = (match or {}).get("label") or (match or {}).get("data", {}).get("title", "")
+            show = search in (item.get("input", "") + " " + title).casefold()
+        return bool(show)
+
     def apply_review_filter(self, *_):
         if not hasattr(self, "table") or not hasattr(self, "review_filter"):
             return
@@ -2495,22 +2517,7 @@ class Main(QMainWindow):
         search = self.review_search.text().strip().casefold()
         visible = 0
         for row, item in enumerate(self.items):
-            status = item.get("status")
-            show = (
-                choice == 0
-                or choice == 1 and status in ("review", "duplicate", "error", "failed")
-                or choice == 2 and status == "ready"
-                or choice == 3 and status == "skipped"
-                or choice == 4 and not item.get("matches")
-            )
-            if search:
-                match = (
-                    item.get("matches", [])[item.get("selected", -1)]
-                    if 0 <= item.get("selected", -1) < len(item.get("matches", []))
-                    else None
-                )
-                title = (match or {}).get("label") or (match or {}).get("data", {}).get("title", "")
-                show = show and search in (item.get("input", "") + " " + title).casefold()
+            show = self.review_row_visible(item, choice, search)
             if self.table.isRowHidden(row) == show:
                 self.table.setRowHidden(row, not show)
             visible += int(show)
