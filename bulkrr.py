@@ -3043,6 +3043,23 @@ class Main(QMainWindow):
                 self, "Nothing to import", "No confirmed titles ready."
             )
             return
+        invalid = [
+            item.get("input", "Unknown title")
+            for item in pending
+            if not isinstance(item.get("matches"), list)
+            or not 0 <= item["selected"] < len(item["matches"])
+            or not isinstance(item["matches"][item["selected"]], dict)
+            or item["matches"][item["selected"]].get("app") not in ("radarr", "sonarr")
+            or item["matches"][item["selected"]].get("type") not in ("movie", "series", "anime")
+            or not isinstance(item["matches"][item["selected"]].get("data"), dict)
+        ]
+        if invalid:
+            QMessageBox.warning(
+                self, "Invalid approved matches",
+                f"{len(invalid)} title(s) have missing or invalid selected metadata. "
+                "Recheck these titles before importing: " + ", ".join(invalid[:5]),
+            )
+            return
         dry_run = self.dry_run.isChecked()
         # The visible checkbox is authoritative for this import, even if the
         # user has not saved connection preferences again.
