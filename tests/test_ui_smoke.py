@@ -82,6 +82,27 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_tmdb_discovery_requires_explicit_token_and_never_starts_on_cancel(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        with patch.object(bulkrr.QInputDialog, "getText", return_value=("", False)):
+                            with patch.object(window, "run_worker") as worker:
+                                window.load_tmdb_trending("movie")
+                                worker.assert_not_called()
+                        with patch.object(bulkrr.QInputDialog, "getText", return_value=("test-value", True)):
+                            with patch.object(window, "run_worker") as worker:
+                                window.load_tmdb_trending("tv")
+                                worker.assert_called_once_with(
+                                    "trending_tmdb",
+                                    config={"kind": "tv", "access_token": "test-value"},
+                                    done=window.tmdb_trending_loaded,
+                                )
+                    finally:
+                        window.close()
+
     def test_new_phase_tabs_and_actions_construct_without_network(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
