@@ -23,7 +23,10 @@ def parse_trending(payload):
     """Validate and normalize AniList's public GraphQL response."""
     if not isinstance(payload, dict) or payload.get("errors"):
         raise ValueError("AniList returned an invalid or unsuccessful response")
-    page = payload.get("data", {}).get("Page", {})
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        raise ValueError("AniList response is missing data")
+    page = data.get("Page", {})
     records = page.get("media") if isinstance(page, dict) else None
     if not isinstance(records, list):
         raise ValueError("AniList response does not contain a media list")
