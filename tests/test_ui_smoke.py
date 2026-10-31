@@ -578,6 +578,29 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_large_review_batch_5000_rows_filters_without_losing_indices(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": f"movie: Load Test {i:04d}",
+                             "status": "ready" if i % 5 else "review",
+                             "matches": [], "selected": -1, "message": "Synthetic fixture"}
+                            for i in range(5000)
+                        ]
+                        window.refresh()
+                        self.assertEqual(window.table.rowCount(), 5000)
+                        window.review_search.setText("Load Test 4999")
+                        self.assertEqual(window.review_visible_count.text(), "1 of 5,000 shown")
+                        self.assertFalse(window.table.isRowHidden(4999))
+                        self.assertTrue(window.table.isRowHidden(4998))
+                        window.review_search.clear()
+                        self.assertEqual(window.review_visible_count.text(), "5,000 of 5,000 shown")
+                    finally:
+                        window.close()
+
     def test_resume_preserves_unfinished_placeholders_and_prior_decisions(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
