@@ -945,6 +945,11 @@ class Main(QMainWindow):
         self.stop_analysis_btn.setEnabled(False)
         self.stop_analysis_btn.setObjectName("dangerAction")
         v.addWidget(self.stop_analysis_btn)
+        self.resume_analysis_btn = QPushButton("Resume remaining analysis")
+        self.resume_analysis_btn.setObjectName("secondaryAction")
+        self.resume_analysis_btn.setEnabled(False)
+        self.resume_analysis_btn.clicked.connect(self.resume_analysis)
+        v.addWidget(self.resume_analysis_btn)
         self.clear_analysis_btn = QPushButton("Clear results and start new list")
         self.clear_analysis_btn.clicked.connect(self.clear_analysis)
         self.clear_analysis_btn.setObjectName("secondaryAction")
@@ -2267,6 +2272,39 @@ class Main(QMainWindow):
         )
         self.run_worker("analyze", items=lines, done=self.analyzed)
 
+    def resume_analysis(self):
+        """Recheck only titles that were not looked up before Stop."""
+        if self.worker and self.worker.isRunning():
+            return
+        if not self.server_data:
+            QMessageBox.warning(self, "Not connected", "Reconnect before resuming analysis.")
+            return
+        pending = [
+            item["input"] for item in self.items
+            if item.get("message") == "Analysis stopped before lookup"
+        ]
+        if not pending:
+            return
+        self._resume_previous_items = list(self.items)
+        self.resume_analysis_btn.setEnabled(False)
+        self.logmsg(f"Resuming {len(pending)} unfinished title(s); completed results preserved")
+        self.run_worker("analyze", items=pending, done=self.resumed_analysis)
+
+    def resumed_analysis(self, items):
+        """Merge resumed results into their original positions, retaining unfinished rows."""
+        previous = getattr(self, "_resume_previous_items", [])
+        by_input = {item["input"]: item for item in items}
+        self.items = [
+            by_input.get(item["input"], item)
+            if item.get("message") == "Analysis stopped before lookup"
+            else item
+            for item in previous
+        ]
+        self._resume_previous_items = []
+        self.apply_category_decisions()
+        self.refresh()
+        self.logmsg(f"Resume pass processed {len(items)} title(s)")
+
     def stop_analysis(self):
         if not self.worker or not self.worker.isRunning() or self.worker.task != "analyze":
             return
@@ -2444,6 +2482,12 @@ class Main(QMainWindow):
             item.get("status") in ("review", "error") for item in self.items))
         self.clear_analysis_btn.setEnabled(not busy and bool(
             self.items or self.input.toPlainText().strip()))
+        self.resume_analysis_btn.setEnabled(
+            not busy and bool(self.server_data) and any(
+                item.get("message") == "Analysis stopped before lookup"
+                for item in self.items
+            )
+        )
 
     def fetch_poster(self, match, target):
         url = poster_url(match)
