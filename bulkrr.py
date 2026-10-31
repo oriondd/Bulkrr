@@ -168,7 +168,7 @@ class Worker(QThread):
             elif self.task == "trending_anime":
                 self.finished_data.emit(fetch_trending_anime())
             elif self.task == "trending_tmdb":
-                self.finished_data.emit(fetch_trending(self.config["kind"], self.config["access_token"]))
+                self.finished_data.emit(fetch_trending(self.config["kind"], self.config["access_token"], window=self.config.get("window", "week")))
             elif self.task == "tmdb_collection":
                 self.finished_data.emit(fetch_collection(self.config["collection_id"], self.config["access_token"]))
             elif self.task == "tmdb_collection_search":
@@ -1294,7 +1294,7 @@ class Main(QMainWindow):
         self.discover_category = QComboBox()
         self.discover_category.addItems([
             "Trending movies", "Trending TV", "Trending anime",
-            "New releases (movies)", "New releases (TV)",
+            "Trending today (movies)", "Trending today (TV)",
         ])
         self.discover_category.setMinimumWidth(205)
         browse_btn = QPushButton("Browse")
@@ -1631,9 +1631,9 @@ class Main(QMainWindow):
             self.load_tmdb_trending("tv")
         elif category == "Trending movies":
             self.load_tmdb_trending("movie")
-        elif category == "New releases (movies)":
+        elif category == "Trending today (movies)":
             self.load_tmdb_trending("movie", window="day")
-        elif category == "New releases (TV)":
+        elif category == "Trending today (TV)":
             self.load_tmdb_trending("tv", window="day")
 
     def load_tmdb_trending(self, kind, window="week"):
