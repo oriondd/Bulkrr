@@ -142,6 +142,31 @@ class ServerProfileTests(unittest.TestCase):
             plan_routed_imports(profiles, assignments, {
                 "anime": {"quality_profile_id": 1, "root_folders": {"tv": "/tv"}}})
 
+    def test_prepare_routed_import_batches_use_destination_specific_folders(self):
+        from bulkrr_servers import prepare_routed_import_batches
+        plans = [{"profile": {"id": "one", "kind": "sonarr", "url": "http://one:8989"},
+                  "item_ids": [1], "quality_profile_id": 3,
+                  "root_folders": {"tv": "/tv", "anime": "/anime"}},
+                 {"profile": {"id": "two", "kind": "radarr", "url": "http://two:7878"},
+                  "item_ids": [2], "quality_profile_id": 7,
+                  "root_folders": {"movie": "/movies"}}]
+        items = [{"selected": 0, "matches": [{"app": "sonarr", "type": "anime",
+                  "id": 11, "data": {"title": "Anime"}}]},
+                 {"selected": 0, "matches": [{"app": "radarr", "type": "movie",
+                  "id": 22, "data": {"title": "Movie"}}]}]
+        batches = prepare_routed_import_batches(plans, items)
+        self.assertEqual(batches[0]["items"][0]["payload"]["rootFolderPath"], "/anime")
+        self.assertEqual(batches[1]["items"][0]["payload"]["qualityProfileId"], 7)
+        self.assertNotIn("rootFolderPath", items[0]["matches"][0]["data"])
+
+    def test_prepare_routed_import_batches_rejects_unreviewed_title(self):
+        from bulkrr_servers import prepare_routed_import_batches
+        plans = [{"profile": {"id": "one", "kind": "sonarr", "url": "http://one:8989"},
+                  "item_ids": [1], "quality_profile_id": 3,
+                  "root_folders": {"tv": "/tv", "anime": "/anime"}}]
+        with self.assertRaisesRegex(ValueError, "explicit metadata"):
+            prepare_routed_import_batches(plans, [{"matches": [], "selected": -1}])
+
 
 if __name__ == "__main__":
     unittest.main()
