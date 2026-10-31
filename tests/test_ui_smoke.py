@@ -637,6 +637,28 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_partial_analysis_progress_targets_original_review_row(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "movie: Preserved", "status": "ready",
+                             "matches": [], "selected": -1, "message": "Reviewed"},
+                            {"input": "movie: Rechecking", "status": "working",
+                             "matches": [], "selected": -1, "message": "Pending"},
+                        ]
+                        window.refresh()
+                        window.active_analysis_rows = [1]
+                        with patch.object(window, "worker") as worker:
+                            worker.task = "analyze"
+                            window.row_update(0, "working", "Fetching corrected metadata")
+                        self.assertEqual(window.items[0]["message"], "Reviewed")
+                        self.assertEqual(window.items[1]["message"], "Fetching corrected metadata")
+                    finally:
+                        window.close()
+
     def test_progress_updates_existing_row_without_full_table_refresh(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
