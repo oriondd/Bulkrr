@@ -21,6 +21,18 @@ class MediaOverviewTests(unittest.TestCase):
     def test_nested_entities_and_spacing(self):
         self.assertEqual(clean_media_overview("One &amp; two&lt;br&gt;Three"), "One & two\nThree")
 
+    def test_double_escaped_line_breaks(self):
+        self.assertEqual(
+            clean_media_overview("First &amp;lt;br&amp;gt;Second"),
+            "First\nSecond",
+        )
+
+    def test_double_escaped_paragraphs(self):
+        self.assertEqual(
+            clean_media_overview("&amp;lt;p&amp;gt;First&amp;lt;/p&amp;gt;Second"),
+            "First\nSecond",
+        )
+
     def test_discards_style_contents(self):
         self.assertEqual(clean_media_overview("<style>body{color:red}</style>Story"), "Story")
 
