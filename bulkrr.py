@@ -1143,6 +1143,14 @@ class Main(QMainWindow):
         self.preview_info.setWordWrap(True)
         self.preview_info.setAlignment(Qt.AlignmentFlag.AlignTop)
         preview_layout.addWidget(self.preview_info, 1)
+        self.review_detail_status = QLabel("Awaiting analysis")
+        self.review_detail_status.setObjectName("reviewDetailStatus")
+        self.review_detail_status.setWordWrap(True)
+        preview_layout.addWidget(self.review_detail_status)
+        self.review_detail_action = QPushButton("Review or change match")
+        self.review_detail_action.setObjectName("secondaryAction")
+        self.review_detail_action.clicked.connect(self.review)
+        preview_layout.addWidget(self.review_detail_action)
         preview.setMinimumWidth(275)
         preview.setMaximumWidth(370)
         review_workspace.addWidget(preview)
@@ -2983,6 +2991,7 @@ class Main(QMainWindow):
         selected = self.items[row] if 0 <= row < len(self.items) else None
         busy = bool(self.worker and self.worker.isRunning())
         self.review_btn.setEnabled(bool(selected and selected.get("matches")) and not busy)
+        self.review_detail_action.setEnabled(bool(selected and selected.get("matches")) and not busy)
         self.edit_title_btn.setEnabled(bool(selected) and bool(self.server_data) and not busy)
         self.duplicate_btn.setEnabled(bool(selected and selected.get("duplicate")) and not busy)
         self.skip_selected_btn.setEnabled(
@@ -3084,11 +3093,20 @@ class Main(QMainWindow):
     def show_selected_poster(self):
         row = self.table.currentRow()
         if row < 0 or row >= len(self.items):
+            self.review_detail_status.setText("Awaiting analysis")
+            self.review_detail_action.setEnabled(False)
             self.poster.setPixmap(QPixmap())
             self.poster.setText("Select a result")
             self.preview_info.setText("Choose a row to inspect the match, synopsis, and review status.")
             return
         item = self.items[row]
+        self.review_detail_status.setText(
+            "STATUS  ·  " + item.get("status", "unknown").upper()
+            + ("  —  " + str(item.get("message", ""))[:140] if item.get("message") else "")
+        )
+        self.review_detail_action.setEnabled(bool(item.get("matches")) and not (
+            self.worker and self.worker.isRunning()
+        ))
         index = item.get("selected", -1)
         match = (
             item.get("matches", [])[index]
