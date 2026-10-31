@@ -2635,11 +2635,18 @@ class Main(QMainWindow):
 
     def edited_title_analyzed(self, results):
         row = getattr(self, "_edit_recheck_row", -1)
-        if 0 <= row < len(self.items) and results:
-            self.items[row] = results[0]
+        if 0 <= row < len(self.items):
+            if results:
+                self.items[row] = results[0]
+                self.apply_category_decisions(results[:1])
+            else:
+                self.items[row].update({
+                    "status": "error",
+                    "action": "review",
+                    "message": "Recheck returned no results — retry analysis before importing",
+                })
         self._edit_recheck_row = -1
         self._edit_recheck_previous = []
-        self.apply_category_decisions(results[:1])
         self.refresh()
         if 0 <= row < len(self.items):
             self.table.selectRow(row)
