@@ -1594,18 +1594,6 @@ class Main(QMainWindow):
         self.dashboard_scan.setObjectName("secondaryAction")
         self.dashboard_scan.clicked.connect(self.scan_library)
         dashboard_layout.addWidget(self.dashboard_scan)
-        dashboard_layout.addWidget(QLabel("QUICK ACCESS"))
-        quick_actions = QHBoxLayout()
-        for title, destination in (
-            ("Discover movies, TV & anime", 4),
-            ("Import a title list", 2),
-            ("Browse library", 3),
-        ):
-            button = QPushButton(title)
-            button.setMinimumHeight(58)
-            button.clicked.connect(lambda checked=False, page=destination: tabs.setCurrentIndex(page))
-            quick_actions.addWidget(button)
-        dashboard_layout.addLayout(quick_actions)
         activity_heading = QLabel("Recent activity")
         activity_heading.setObjectName("dashboardSectionTitle")
         dashboard_layout.addWidget(activity_heading)
