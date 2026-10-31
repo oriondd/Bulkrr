@@ -1,6 +1,6 @@
 import sys, json, re, os, difflib, urllib.request, urllib.parse, urllib.error, datetime, traceback, logging, copy
 from pathlib import Path
-from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QPointF
+from PySide6.QtCore import Qt, QThread, Signal, QTimer, QSize, QPointF, QRect
 from PySide6.QtGui import (
     QColor,
     QBrush,
@@ -128,6 +128,15 @@ class MediaPosterDelegate(QStyledItemDelegate):
         painter.setPen(QPen(QColor("#b6a0ff" if selected else "#5d4b93" if hovered else "#35415e"), 2 if selected else 1))
         painter.setBrush(QColor("#2b2452" if selected else "#202947" if hovered else "#151d32"))
         painter.drawRoundedRect(rect, 11, 11)
+        if selected or hovered:
+            accent = QColor("#b9a6ff" if selected else "#9278ed")
+            accent.setAlpha(180 if selected else 110)
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(accent)
+            painter.drawRoundedRect(
+                QRect(rect.left() + 10, rect.bottom() - 6, rect.width() - 20, 3),
+                1.5, 1.5,
+            )
 
         poster_width = 90 if self.featured else 132
         poster_height = 128 if self.featured else 188
