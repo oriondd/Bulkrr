@@ -417,6 +417,23 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_routed_preview_failed_library_check_blocks_approval(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.pending_routed_import = {"batches": [], "credentials": {}}
+                        with patch.object(bulkrr.QMessageBox, "question") as ask:
+                            with patch.object(bulkrr.QMessageBox, "warning") as warning:
+                                window.routed_import_previewed([
+                                    {"action": "add", "error": "Destination unreachable"}])
+                        ask.assert_not_called()
+                        warning.assert_called_once()
+                        self.assertIsNone(window.pending_routed_import)
+                    finally:
+                        window.close()
+
     def test_routed_import_search_flag_enabled_after_approval(self):
         batch = {"profile": {"id": "films", "kind": "radarr",
                              "url": "http://films:7878"},
