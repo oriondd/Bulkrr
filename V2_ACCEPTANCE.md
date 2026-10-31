@@ -29,7 +29,7 @@ release remains unaffected.
    server's activity. Avoid testing large batches first.
 5. **Discovery:** Search movie, TV, and anime titles. Queue selections and
    confirm they enter the normal review workflow without automatic import.
-   Search a franchise and inspect unrelated candidate filtering. Load trending anime from AniList and rank results using interest keywords. Scan your library and rank discovered titles by its common genres. Confirm no automatic imports occur.
+   Search a franchise and inspect unrelated candidate filtering. Load trending anime from AniList and rank results using interest keywords. Test TMDB trending movies and TV using a temporary API read access token, and confirm cancellation makes no network request. Scan your library and rank discovered titles by its common genres. Confirm no automatic imports occur.
 6. **Release calendar:** Load today's US TV schedule. Confirm the UI remains
    responsive if the network is unavailable.
 7. **Session recovery:** Save a review snapshot, reopen it, and confirm live
