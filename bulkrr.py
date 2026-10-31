@@ -61,7 +61,7 @@ from bulkrr_core import title_parts, similarity, candidate_score, classify, post
 from bulkrr_imports import normalize_titles, read_source, save_session, load_session
 from bulkrr_review import review_summary, STATUS_LABELS, match_confidence
 from bulkrr_theme import DARK_THEME
-from bulkrr_library import missing_movies, missing_series
+from bulkrr_library import missing_movies, missing_series, upgrade_movies
 from bulkrr_bulk import plan_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_trending import fetch_trending_anime
@@ -179,14 +179,19 @@ class Worker(QThread):
                             result["errors"].append(f"{app.title()}: {exc}")
                 self.finished_data.emit(result)
             elif self.task == "library_scan":
-                result = {"movies": [], "series": [], "errors": []}
-                for app, endpoint, target, parser in (("radarr", "movie", "movies", missing_movies), ("sonarr", "series", "series", missing_series)):
-                    if app not in self.connections:
-                        continue
+                result = {"movies": [], "series": [], "upgrades": [], "errors": []}
+                if "radarr" in self.connections:
                     try:
-                        result[target] = parser(self.call(app, endpoint))
+                        movies = self.call("radarr", "movie")
+                        result["movies"] = missing_movies(movies)
+                        result["upgrades"] = upgrade_movies(movies)
                     except Exception as exc:
-                        result["errors"].append(f"{app.title()}: {exc}")
+                        result["errors"].append(f"Radarr: {exc}")
+                if "sonarr" in self.connections:
+                    try:
+                        result["series"] = missing_series(self.call("sonarr", "series"))
+                    except Exception as exc:
+                        result["errors"].append(f"Sonarr: {exc}")
                 self.finished_data.emit(result)
             elif self.task == "analyze":
                 out = []
