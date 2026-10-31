@@ -37,6 +37,6 @@ jobs:
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
       - name: Check Python syntax
-        run: python -m compileall -q bulkrr.py bulkrr_core.py bulkrr_api.py bulkrr_imports.py bulkrr_review.py bulkrr_theme.py bulkrr_library.py bulkrr_bulk.py bulkrr_discovery.py bulkrr_servers.py bulkrr_updates.py bulkrr_sessions.py bulkrr_calendar.py tests
+        run: python -m compileall -q bulkrr.py bulkrr_core.py bulkrr_api.py bulkrr_imports.py bulkrr_review.py bulkrr_theme.py bulkrr_library.py bulkrr_bulk.py bulkrr_discovery.py bulkrr_servers.py bulkrr_updates.py bulkrr_sessions.py bulkrr_calendar.py bulkrr_collections.py tests
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
