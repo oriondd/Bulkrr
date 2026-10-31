@@ -160,6 +160,8 @@ class Worker(QThread):
                 self.finished_data.emit(expand_collection(matches[:100]))
             elif self.task == "trending_anime":
                 self.finished_data.emit(fetch_trending_anime())
+            elif self.task == "trending_tmdb":
+                self.finished_data.emit(fetch_trending(self.config["kind"], self.config["access_token"]))
             elif self.task == "release_calendar":
                 self.finished_data.emit(fetch_schedule())
             elif self.task == "discover":
