@@ -36,7 +36,7 @@ jobs:
       - name: Build Windows setup preview
         shell: pwsh
         run: |
-          $compiler = "${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe"
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $compiler)) { throw "Inno Setup compiler missing at $compiler" }
           & $compiler installer.iss
           if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
