@@ -7,7 +7,7 @@ class TrendingTests(unittest.TestCase):
     def test_normalize_titles_year_and_duplicates(self):
         payload = {"data": {"Page": {"media": [
             {"title": {"english": "Test Anime", "romaji": "Romaji"},
-             "startDate": {"year": 2026}, "trending": 900},
+             "startDate": {"year": 2026}, "trending": 900, "genres": ["Horror", "Mystery"]},
             {"title": {"english": "Test Anime"}, "startDate": {"year": 2026}},
             {"title": {"english": None, "romaji": "Another"}, "trending": 2},
             {"title": {}, "startDate": {"year": 2020}},
@@ -18,6 +18,7 @@ class TrendingTests(unittest.TestCase):
         self.assertEqual(records[0]["title"], "Test Anime")
         self.assertEqual(records[0]["year"], 2026)
         self.assertEqual(records[0]["type"], "anime")
+        self.assertEqual(records[0]["genres"], ["Horror", "Mystery"])
         self.assertEqual(records[1]["title"], "Another")
 
     def test_invalid_payloads(self):
