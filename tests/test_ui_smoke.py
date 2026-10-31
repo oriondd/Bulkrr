@@ -698,6 +698,27 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_import_worker_failure_marks_only_queued_rows_failed(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "movie: Queued", "status": "working",
+                             "matches": [], "selected": -1, "message": "Queued"},
+                            {"input": "movie: Unrelated", "status": "ready",
+                             "matches": [], "selected": -1, "message": "Ready"},
+                        ]
+                        window.active_import_rows = [0]
+                        window.import_failed("Connection dropped")
+                        self.assertEqual(window.items[0]["status"], "failed")
+                        self.assertIn("verify server state", window.items[0]["message"])
+                        self.assertEqual(window.items[1]["status"], "ready")
+                        self.assertEqual(window.active_import_rows, [])
+                    finally:
+                        window.close()
+
     def test_negative_import_progress_index_cannot_change_last_title(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
