@@ -37,7 +37,7 @@ def clean_media_overview(value):
     # Some metadata providers escape HTML twice. Normalize only known
     # formatting tags to avoid interpreting arbitrary escaped user text.
     source = re.sub(
-        r"(?i)&lt;(/?(?:br|p|div|li))\\s*/?&gt;",
+        r"(?i)&lt;(/?(?:br|p|div|li))\s*/?&gt;",
         lambda match: "<" + match.group(1) + ">",
         source,
     )
