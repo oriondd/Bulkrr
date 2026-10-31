@@ -66,6 +66,7 @@ from bulkrr_bulk import plan_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_trending import fetch_trending_anime
 from bulkrr_recommendations import rank_candidates
+from bulkrr_genres import favorite_genres
 from bulkrr_servers import validate_profiles, legacy_profiles
 from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
@@ -179,19 +180,24 @@ class Worker(QThread):
                             result["errors"].append(f"{app.title()}: {exc}")
                 self.finished_data.emit(result)
             elif self.task == "library_scan":
-                result = {"movies": [], "series": [], "upgrades": [], "errors": []}
+                result = {"movies": [], "series": [], "upgrades": [], "genres": [], "errors": []}
+                library_movies = []
+                library_series = []
                 if "radarr" in self.connections:
                     try:
                         movies = self.call("radarr", "movie")
+                        library_movies = movies
                         result["movies"] = missing_movies(movies)
                         result["upgrades"] = upgrade_movies(movies)
                     except Exception as exc:
                         result["errors"].append(f"Radarr: {exc}")
                 if "sonarr" in self.connections:
                     try:
-                        result["series"] = missing_series(self.call("sonarr", "series"))
+                        library_series = self.call("sonarr", "series")
+                        result["series"] = missing_series(library_series)
                     except Exception as exc:
                         result["errors"].append(f"Sonarr: {exc}")
+                result["genres"] = favorite_genres(library_movies, library_series)
                 self.finished_data.emit(result)
             elif self.task == "analyze":
                 out = []
