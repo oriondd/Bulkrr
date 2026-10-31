@@ -65,6 +65,7 @@ from bulkrr_library import missing_movies, missing_series
 from bulkrr_bulk import plan_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_trending import fetch_trending_anime
+from bulkrr_recommendations import rank_candidates
 from bulkrr_servers import validate_profiles, legacy_profiles
 from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
@@ -917,6 +918,12 @@ class Main(QMainWindow):
         self.trending_anime_button = QPushButton("Explore trending anime (AniList)")
         self.trending_anime_button.clicked.connect(self.load_trending_anime)
         discover_layout.addWidget(self.trending_anime_button)
+        self.recommend_interests = QLineEdit()
+        self.recommend_interests.setPlaceholderText("Interests, e.g. horror mystery space")
+        discover_layout.addWidget(self.recommend_interests)
+        recommend_btn = QPushButton("Rank current results by my interests")
+        recommend_btn.clicked.connect(self.rank_discovery)
+        discover_layout.addWidget(recommend_btn)
         self.discover_results = QListWidget()
         self.discover_results.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         discover_layout.addWidget(self.discover_results)
@@ -1040,6 +1047,22 @@ class Main(QMainWindow):
         for entry in records:
             self.discover_results.addItem(f"{entry['title']} ({entry['year'] or '?'}) — {entry['type']}")
         self.logmsg(f"Discovery returned {len(records)} matching titles")
+
+    def rank_discovery(self):
+        records = getattr(self, "discover_records", [])
+        if not records:
+            QMessageBox.information(self, "No discovery results", "Discover titles or load trending anime first.")
+            return
+        try:
+            ranked = rank_candidates(records, self.recommend_interests.text())
+        except ValueError as exc:
+            QMessageBox.information(self, "Recommendation interests", str(exc))
+            return
+        if not ranked:
+            QMessageBox.information(self, "No matching suggestions", "No current titles match those interests. Try different keywords.")
+            return
+        self.discovered(ranked)
+        self.logmsg(f"Locally ranked {len(ranked)} discovery candidates by entered interests")
 
     def queue_discovered(self):
         records = getattr(self, "discover_records", [])
