@@ -102,6 +102,29 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_verified_collection_requires_id_and_token_and_stays_read_only(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        with patch.object(bulkrr.QInputDialog, "getInt", return_value=(42, True)):
+                            with patch.object(bulkrr.QInputDialog, "getText", return_value=("test-token", True)):
+                                with patch.object(window, "run_worker") as worker:
+                                    window.load_tmdb_collection()
+                                    worker.assert_called_once_with(
+                                        "tmdb_collection",
+                                        config={"collection_id": 42, "access_token": "test-token"},
+                                        done=window.tmdb_collection_loaded,
+                                    )
+                        window.tmdb_collection_loaded([
+                            {"title": "Collection Film", "type": "movie", "year": 2026},
+                        ])
+                        self.assertEqual(window.input.toPlainText(), "")
+                        self.assertEqual(len(window.discover_records), 1)
+                    finally:
+                        window.close()
+
     def test_tmdb_worker_emits_metadata_without_importing(self):
         worker = bulkrr.Worker("trending_tmdb", {}, config={
             "kind": "movie", "access_token": "test-value",
