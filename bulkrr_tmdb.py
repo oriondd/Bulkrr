@@ -126,3 +126,43 @@ def fetch_collection(collection_id, access_token):
     if len(raw) > 1024 * 1024:
         raise ValueError("TMDB collection response exceeds size limit")
     return normalize_collection(json.loads(raw.decode("utf-8")))
+
+
+def normalize_collection_search(payload):
+    """Parse TMDB collection search results without trusting arbitrary metadata."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+        raise ValueError("TMDB returned invalid collection search metadata")
+    results, seen = [], set()
+    for item in payload["results"][:50]:
+        if not isinstance(item, dict):
+            continue
+        ident, name = item.get("id"), item.get("name")
+        if type(ident) is not int or ident <= 0 or ident in seen:
+            continue
+        if not isinstance(name, str) or not name.strip():
+            continue
+        seen.add(ident)
+        results.append({"id": ident, "name": name.strip()[:250]})
+    return results
+
+
+def search_collections(term, access_token):
+    """Search official TMDB collections, returning IDs for explicit user selection."""
+    from urllib.parse import urlencode
+    if not isinstance(term, str) or not 2 <= len(term.strip()) <= 100:
+        raise ValueError("Enter a collection name between 2 and 100 characters")
+    if (not isinstance(access_token, str) or not access_token.strip()
+            or len(access_token) > 512 or any(ch.isspace() for ch in access_token)):
+        raise ValueError("Provide a TMDB API read access token")
+    request = urllib.request.Request(
+        BASE + "/search/collection?" + urlencode({
+            "query": term.strip(), "language": "en-US", "include_adult": "false",
+        }),
+        headers={"Accept": "application/json", "User-Agent": "Bulkrr/2.0",
+                 "Authorization": "Bearer " + access_token.strip()},
+    )
+    with urllib.request.urlopen(request, timeout=12) as response:
+        raw = response.read(512 * 1024 + 1)
+    if len(raw) > 512 * 1024:
+        raise ValueError("TMDB collection search response exceeds size limit")
+    return normalize_collection_search(json.loads(raw.decode("utf-8")))
