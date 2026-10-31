@@ -1404,6 +1404,8 @@ class Main(QMainWindow):
             self.worker.finished.connect(lambda: self.tmdb_tv_button.setEnabled(True))
         if task == "tmdb_collection":
             self.worker.finished.connect(lambda: self.tmdb_collection_button.setEnabled(True))
+        if task == "tmdb_collection_search":
+            self.worker.finished.connect(lambda: self.tmdb_collection_search_button.setEnabled(True))
         self.worker.start()
         self.update_review_actions()
 
