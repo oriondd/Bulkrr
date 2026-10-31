@@ -698,6 +698,27 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_duplicate_import_result_does_not_overwrite_first_outcome(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [{
+                            "input": "movie: One", "status": "working",
+                            "matches": [], "selected": -1, "message": "Queued",
+                        }]
+                        window.active_import_rows = [0]
+                        window.active_dry_run = False
+                        window.imported([
+                            ("movie: One", "green", "Added"),
+                            ("movie: One", "red", "Duplicate callback"),
+                        ])
+                        self.assertEqual(window.items[0]["status"], "done")
+                        self.assertEqual(window.items[0]["message"], "Added")
+                    finally:
+                        window.close()
+
     def test_missing_import_result_marks_unfinished_approved_row_failed(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
