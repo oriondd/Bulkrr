@@ -1746,6 +1746,7 @@ class Main(QMainWindow):
             self.discover_detail_title.setText("Choose a poster to explore")
             self.discover_detail_meta.setText("Movie · TV · Anime")
             self.discover_detail_overview.setText("Metadata, genres, and synopsis will appear here.")
+            self.discover_detail_poster.setProperty("poster_url", "")
             self.discover_detail_poster.setPixmap(QPixmap())
             self.discover_detail_poster.setText("Select a title")
             return
@@ -1758,6 +1759,7 @@ class Main(QMainWindow):
         overview = str(entry.get("overview") or "No synopsis available.").strip()
         self.discover_detail_overview.setText(overview[:750] + ("…" if len(overview) > 750 else ""))
         url = entry.get("poster_url")
+        self.discover_detail_poster.setProperty("poster_url", "")
         self.discover_detail_poster.setPixmap(QPixmap())
         self.discover_detail_poster.setText("Artwork unavailable")
         if isinstance(url, str) and url.startswith(("https://image.tmdb.org/t/p/", "https://s4.anilist.co/", "https://s3.anilist.co/")):
@@ -3049,11 +3051,8 @@ class Main(QMainWindow):
                 self.poster_inflight[url].append(target)
             return
         self.poster_inflight[url] = [target]
-        worker = PosterWorker(url)
-        self.poster_workers.append(worker)
-        worker.loaded.connect(self.poster_loaded)
-        worker.finished.connect(lambda: self.poster_worker_finished(worker))
-        worker.start()
+        self.poster_pending.append(url)
+        self.start_pending_posters()
 
     def start_pending_posters(self):
         """Bound artwork requests so a large catalog does not spawn dozens of threads."""
