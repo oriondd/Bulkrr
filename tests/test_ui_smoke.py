@@ -780,7 +780,7 @@ class MainWindowSmokeTests(unittest.TestCase):
                         window.items = [
                             {"input": "movie: Repeat", "status": "ready",
                              "selected": 0, "matches": [], "message": "Ready"},
-                            {"input": "MOVIE: REPEAT", "status": "ready",
+                            {"input": "MOVIE:   REPEAT", "status": "ready",
                              "selected": 0, "matches": [], "message": "Ready"},
                         ]
                         with patch.object(window, "run_worker") as worker:
