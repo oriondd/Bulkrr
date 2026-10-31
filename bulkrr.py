@@ -1233,9 +1233,22 @@ class Main(QMainWindow):
         except Exception:
             QMessageBox.warning(self, "Keyring unavailable", "Could not securely save the API key. Additional server was not added.")
             return
-        self.extra_profiles.append(profile)
+        updated = self.extra_profiles + [profile]
+        try:
+            saved = dict(self.settings)
+            saved["extra_profiles"] = validate_profiles(updated)
+            APPDIR.mkdir(parents=True, exist_ok=True)
+            SETTINGS.write_text(json.dumps(saved, indent=2), encoding="utf-8")
+        except (OSError, ValueError) as exc:
+            try:
+                keyring.delete_password("Bulkrr", "profile:" + identifier)
+            except Exception:
+                pass
+            QMessageBox.warning(self, "Could not save server profile", str(exc))
+            return
+        self.extra_profiles = updated
+        self.settings = saved
         self.refresh_extra_list()
-        self.persist_extra_profiles()
 
     def activate_extra_server(self):
         row = self.extra_list.currentRow()
