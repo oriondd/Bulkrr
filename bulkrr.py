@@ -60,6 +60,7 @@ from bulkrr_imports import normalize_titles, read_source, save_session, load_ses
 from bulkrr_review import review_summary, STATUS_LABELS, match_confidence
 from bulkrr_theme import DARK_THEME
 from bulkrr_library import missing_movies, missing_series
+from bulkrr_bulk import plan_searches
 
 
 class PosterWorker(QThread):
@@ -134,6 +135,16 @@ class Worker(QThread):
                     self.progress.emit(
                         f"{app.title()} connected (v{info.get('version','?')})."
                     )
+                self.finished_data.emit(result)
+            elif self.task == "bulk_search":
+                result = {"queued": 0, "errors": []}
+                for app in ("radarr", "sonarr"):
+                    for payload in plan_searches(app, self.config.get(app, [])):
+                        try:
+                            self.call(app, "command", "POST", payload)
+                            result["queued"] += 1
+                        except Exception as exc:
+                            result["errors"].append(f"{app.title()}: {exc}")
                 self.finished_data.emit(result)
             elif self.task == "library_scan":
                 result = {"movies": [], "series": [], "errors": []}
@@ -801,6 +812,9 @@ class Main(QMainWindow):
         library_layout.addWidget(QLabel("Read-only inventory of missing movies and TV episodes. No searches or changes are made."))
         self.library_scan_btn = QPushButton("Scan connected libraries")
         self.library_scan_btn.clicked.connect(self.scan_library)
+        self.library_search_btn = QPushButton("Search selected missing titles")
+        self.library_search_btn.clicked.connect(self.search_missing)
+        library_layout.addWidget(self.library_search_btn)
         library_layout.addWidget(self.library_scan_btn)
         self.library_summary = QLabel("Connect to Radarr/Sonarr, then scan.")
         self.library_layout_table = QTableWidget(0, 5)
@@ -834,6 +848,9 @@ class Main(QMainWindow):
         self.library_scan_btn.setEnabled(True)
         rows = [("Radarr", m, "1") for m in data["movies"]]
         rows += [("Sonarr", s, str(s["missing"])) for s in data["series"]]
+        self.library_entries = rows
+        self.library_layout_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.library_layout_table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.library_layout_table.setRowCount(len(rows))
         for row, (app, entry, count) in enumerate(rows):
             for col, value in enumerate((app, entry["title"], entry.get("year") or "—", count, "Yes" if entry["monitored"] else "No")):
@@ -845,6 +862,37 @@ class Main(QMainWindow):
             summary += " | Errors: " + "; ".join(data["errors"])
         self.library_summary.setText(summary)
         self.logmsg("Library inventory: " + summary)
+
+    def search_missing(self):
+        if self.worker and self.worker.isRunning():
+            return
+        selected = {"radarr": [], "sonarr": []}
+        for index in self.library_layout_table.selectionModel().selectedRows():
+            row = index.row()
+            if row >= len(getattr(self, "library_entries", [])):
+                continue
+            app, entry, _ = self.library_entries[row]
+            if entry.get("monitored") and type(entry.get("id")) is int:
+                selected[app.lower()].append(entry["id"])
+        count = sum(len(ids) for ids in selected.values())
+        if not count or count > 500:
+            QMessageBox.information(self, "Selection required", "Select 1–500 monitored missing titles.")
+            return
+        answer = QMessageBox.question(
+            self, "Confirm search",
+            f"Request searches for {count} titles? Sonarr/Radarr may download media and consume storage.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            self.run_worker("bulk_search", config=selected, done=self.bulk_search_done)
+
+    def bulk_search_done(self, result):
+        message = f"Queued {result['queued']} search commands."
+        if result["errors"]:
+            message += " Errors: " + "; ".join(result["errors"])
+        self.logmsg(message)
+        QMessageBox.information(self, "Search results", message)
 
     def load_settings(self):
         try:
