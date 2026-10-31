@@ -513,7 +513,21 @@ class Worker(QThread):
                                     )
                                 )
                                 continue
-                            description = f"Would add to {app.title()} in {folder} (quality profile {profile})"
+                            try:
+                                profile_id = int(profile)
+                                if profile_id <= 0:
+                                    raise ValueError("quality profile must be positive")
+                            except (TypeError, ValueError, OverflowError):
+                                results.append(
+                                    (item["input"], "red", "Invalid quality profile ID")
+                                )
+                                continue
+                            if not isinstance(folder, str) or not folder.strip():
+                                results.append(
+                                    (item["input"], "red", "Invalid root folder path")
+                                )
+                                continue
+                            description = f"Would add to {app.title()} in {folder.strip()} (quality profile {profile_id})"
                         elif action == "skip":
                             description = "Would skip existing library title"
                         elif not self.config.get("search", True):
