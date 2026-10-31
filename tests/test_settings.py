@@ -21,6 +21,8 @@ class SettingsPersistenceTests(unittest.TestCase):
             target = Path(folder) / "settings.json"
             for data in ({"api_key": "sensitive"},
                          {"extra_profiles": [{"password": "sensitive"}]},
+                         {"tmdb_access_token": "sensitive"},
+                         {"sonarr_api_key": "sensitive"},
                          {"value": float("nan")},
                          {"value": float("inf")}):
                 with self.subTest(data=data), self.assertRaises(ValueError):
