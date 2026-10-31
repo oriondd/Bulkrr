@@ -1170,7 +1170,7 @@ class Main(QMainWindow):
         self.run_worker("check_updates", done=self.updates_checked)
 
     def updates_checked(self, release):
-        if update_available("2.0.0", release["tag"]):
+        if update_available("2.0.0-beta", release["tag"]):
             answer = QMessageBox.question(self, "Update available", f"Bulkrr {release['tag']} is available. Open the official GitHub release page?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
             if answer == QMessageBox.StandardButton.Yes:
                 import webbrowser
