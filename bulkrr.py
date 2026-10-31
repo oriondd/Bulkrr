@@ -3052,6 +3052,18 @@ class Main(QMainWindow):
             or item["matches"][item["selected"]].get("app") not in ("radarr", "sonarr")
             or item["matches"][item["selected"]].get("type") not in ("movie", "series", "anime")
             or not isinstance(item["matches"][item["selected"]].get("data"), dict)
+            or not str(item["matches"][item["selected"]].get("id") or "").strip()
+            or not str(
+                item["matches"][item["selected"]].get("data", {}).get("title") or ""
+            ).strip()
+            or (
+                item["matches"][item["selected"]].get("app") == "radarr"
+                and item["matches"][item["selected"]].get("type") != "movie"
+            )
+            or (
+                item["matches"][item["selected"]].get("app") == "sonarr"
+                and item["matches"][item["selected"]].get("type") == "movie"
+            )
         ]
         if invalid:
             QMessageBox.warning(
