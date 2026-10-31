@@ -472,6 +472,32 @@ class MainWindowSmokeTests(unittest.TestCase):
         self.assertEqual(results[0][0]["status"], "added")
         self.assertTrue(api.call_args.args[4]["addOptions"]["searchForMissingEpisodes"])
 
+    def test_category_decisions_are_preview_only_and_preserve_ambiguous_review(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        items = [
+                            {"input": "Existing", "matches": [{"id": 1}], "selected": 0,
+                             "status": "duplicate", "duplicate": {"files": 0}, "action": "add"},
+                            {"input": "Missing", "matches": [], "selected": -1,
+                             "status": "error", "duplicate": None, "action": "add"},
+                            {"input": "Ambiguous", "matches": [{"id": 2}], "selected": 0,
+                             "status": "review", "duplicate": None, "action": "add"},
+                            {"input": "Ready", "matches": [{"id": 3}], "selected": 0,
+                             "status": "ready", "duplicate": None, "action": "add"},
+                        ]
+                        with patch.object(window, "run_worker") as writes:
+                            window.analyzed(items)
+                        writes.assert_not_called()
+                        self.assertEqual([i["status"] for i in window.items],
+                                         ["skipped", "skipped", "review", "ready"])
+                        self.assertEqual([i["action"] for i in window.items],
+                                         ["skip", "skip", "review", "add"])
+                    finally:
+                        window.close()
+
     def test_analysis_stop_skips_remaining_titles_without_more_lookups(self):
         worker = bulkrr.Worker("analyze", {}, items=[
             "movie: First (2020)", "movie: Second (2021)", "movie: Third (2022)"])
