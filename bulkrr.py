@@ -1143,6 +1143,7 @@ class Main(QMainWindow):
             self.library_layout_table.setRowCount(0)
         if hasattr(self, "library_summary"):
             self.library_summary.setText("Reconnect and scan to refresh library inventory")
+        self.update_storage_estimate()
         self.refresh()
         for combo in self.combo.values():
             combo.clear()
@@ -1275,6 +1276,7 @@ class Main(QMainWindow):
         self.library_counts = (0, 0)
         self.library_layout_table.setRowCount(0)
         self.library_summary.setText("Reconnect and scan to refresh library inventory")
+        self.update_storage_estimate()
         for setting in ("movie_folder", "tv_folder", "anime_folder", "radarr_profile", "sonarr_profile"):
             self.settings.pop(setting, None)
         self.refresh()
@@ -1337,6 +1339,7 @@ class Main(QMainWindow):
             self.library_layout_table.setRowCount(0)
         if hasattr(self, "library_summary"):
             self.library_summary.setText("Reconnect and scan to refresh library inventory")
+        self.update_storage_estimate()
         self.refresh()
         for combo in self.combo.values():
             combo.clear()
