@@ -4,6 +4,7 @@ API keys are never serialized by this module. Callers should store secrets in
 the operating-system keyring using each profile's stable identifier.
 """
 import re
+from urllib.parse import urlsplit
 
 IDENTIFIER = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
