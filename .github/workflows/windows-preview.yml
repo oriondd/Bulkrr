@@ -1,0 +1,87 @@
+name: Bulkrr Windows preview build
+
+# Run CI only when explicitly requested to avoid runner congestion.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Only build/test the newest commit on each branch.
+concurrency:
+  group: windows-preview-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-preview:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install build dependencies
+        run: python -m pip install -r requirements.txt pyinstaller
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Package Windows preview
+        shell: pwsh
+        run: |
+          $args = @("--noconfirm", "--clean", "--windowed", "--name", "Bulkrr-2.0-preview")
+          if (Test-Path "Bulkrr.ico") { $args += @("--icon", "Bulkrr.ico") }
+          if (Test-Path "Bulkrr.png") { $args += @("--add-data", "Bulkrr.png;.") }
+          if (Test-Path "Bulkrr.ico") { $args += @("--add-data", "Bulkrr.ico;.") }
+          if (Test-Path "Bulkrr-splash.png") { $args += @("--add-data", "Bulkrr-splash.png;.") }
+          $args += "bulkrr.py"
+          python -m PyInstaller @args
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --yes --no-progress
+      - name: Build Windows setup preview
+        shell: pwsh
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $compiler)) { throw "Inno Setup compiler missing at $compiler" }
+          & $compiler installer.iss
+          if ($LASTEXITCODE -ne 0) { throw "Installer compilation failed" }
+      - name: Verify packaged Windows executables
+        shell: pwsh
+        run: |
+          $portable = "dist/Bulkrr-2.0-preview/Bulkrr-2.0-preview.exe"
+          $installer = "installer-dist/Bulkrr-2.0-Windows-setup-preview.exe"
+          foreach ($path in @($portable, $installer)) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Missing packaged executable: $path"
+            }
+            $file = Get-Item -LiteralPath $path
+            if ($file.Length -lt 1024) {
+              throw "Packaged executable is unexpectedly small: $path ($($file.Length) bytes)"
+            }
+            $stream = [System.IO.File]::OpenRead($file.FullName)
+            try {
+              $magic = New-Object byte[] 2
+              if ($stream.Read($magic, 0, 2) -ne 2 -or $magic[0] -ne 0x4D -or $magic[1] -ne 0x5A) {
+                throw "Packaged output is not a Windows PE executable: $path"
+              }
+            } finally {
+              $stream.Dispose()
+            }
+            Write-Host "Verified $path ($($file.Length) bytes)"
+          }
+      - name: Upload Windows installer preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bulkrr-2.0-Windows-installer-preview
+          path: installer-dist/*.exe
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Windows test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bulkrr-2.0-Windows-preview
+          path: dist/Bulkrr-2.0-preview/
+          if-no-files-found: error
+          retention-days: 14
