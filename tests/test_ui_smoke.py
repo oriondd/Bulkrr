@@ -185,6 +185,40 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+
+    def test_sonarr_episode_preview_is_read_only_and_filters_eligibility(self):
+        worker = bulkrr.Worker("episode_upgrade_preview",
+                               {"sonarr": {"url": "http://localhost:8989", "key": "test"}},
+                               config={"series_ids": [11]})
+        results, failures = [], []
+        worker.finished_data.connect(results.append)
+        worker.failed.connect(failures.append)
+        sample = [{"id": 21, "monitored": True,
+                   "airDateUtc": "2020-01-01T00:00:00Z",
+                   "episodeFile": {"qualityCutoffNotMet": True}},
+                  {"id": 22, "monitored": True,
+                   "airDateUtc": "2020-01-01T00:00:00Z",
+                   "episodeFile": {"qualityCutoffNotMet": False}}]
+        with patch.object(worker, "call", return_value=sample) as api:
+            worker.run()
+        api.assert_called_once_with("sonarr", "episode?seriesId=11&includeEpisodeFile=true")
+        self.assertEqual(results, [[{"name": "EpisodeSearch", "episodeIds": [21]}]])
+        self.assertEqual(failures, [])
+
+    def test_sonarr_episode_upgrade_requires_confirmed_search_task(self):
+        worker = bulkrr.Worker("episode_upgrade_search",
+                               {"sonarr": {"url": "http://localhost:8989", "key": "test"}},
+                               config={"episode_ids": [21]})
+        results, failures = [], []
+        worker.finished_data.connect(results.append)
+        worker.failed.connect(failures.append)
+        with patch.object(worker, "call", return_value={}) as api:
+            worker.run()
+        api.assert_called_once_with("sonarr", "command", "POST",
+                                    {"name": "EpisodeSearch", "episodeIds": [21]})
+        self.assertEqual(results, [{"queued": 1, "errors": []}])
+        self.assertEqual(failures, [])
+
     def test_new_phase_tabs_and_actions_construct_without_network(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
