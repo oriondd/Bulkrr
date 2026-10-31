@@ -91,6 +91,7 @@ def check_routed_libraries(routes, fetch_library):
         raise ValueError("Invalid routing checks")
     results = []
     seen = set()
+    assigned_items = set()
     for route in routes:
         if not isinstance(route, dict) or not isinstance(route.get("profile"), dict):
             raise ValueError("Invalid routing group")
@@ -104,6 +105,11 @@ def check_routed_libraries(routes, fetch_library):
                 or any(type(item) is not int or item <= 0 for item in ids)
                 or len(ids) != len(set(ids))):
             raise ValueError("Invalid routed item IDs")
+        if assigned_items.intersection(ids):
+            raise ValueError("A title cannot be assigned to multiple destinations")
+        assigned_items.update(ids)
+        if len(assigned_items) > 500:
+            raise ValueError("Routing checks are limited to 500 titles")
         try:
             records = fetch_library(profile)
             if not isinstance(records, list):
