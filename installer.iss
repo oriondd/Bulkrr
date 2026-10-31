@@ -9,7 +9,7 @@ AppId={{CF0D631A-95B8-4FA5-A1C2-2E7F1A61D0C1}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=DOM
-DefaultDirName={autopf}\Bulkrr
+DefaultDirName={localappdata}\Programs\Bulkrr
 DefaultGroupName=Bulkrr
 DisableProgramGroupPage=yes
 OutputDir=installer-dist
@@ -18,9 +18,7 @@ Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
 ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#AppExe}
 
 [Files]
