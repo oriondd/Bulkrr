@@ -102,6 +102,26 @@ class ImportLibraryCacheTests(unittest.TestCase):
         self.assertEqual(sum(method == "POST" for _, _, method in calls), 1)
         self.assertEqual(output[0][1][2], "Skipped existing library title")
 
+    def test_duplicate_add_after_incomplete_response_is_not_repeated(self):
+        worker = bulkrr.Worker(
+            "import", {"radarr": {"url": "http://example.invalid", "key": "test"}},
+            items=[approved("First", 101), approved("Same Movie", 101)],
+            config={"movie_folder": "/movies", "radarr_profile": 1,
+                    "search": False, "dry_run": False},
+        )
+        calls = []
+        output = []
+        def fake_call(app, endpoint, method="GET", payload=None):
+            calls.append((app, endpoint, method))
+            if method == "GET":
+                return []
+            return {"id": 1}
+        worker.call = fake_call
+        worker.finished_data.connect(output.append)
+        worker.run()
+        self.assertEqual(sum(method == "POST" for _, _, method in calls), 1)
+        self.assertEqual(output[0][1][2], "Skipped existing library title")
+
     def test_incomplete_add_response_invalidates_snapshot(self):
         calls, output = self.run_batch([
             {"id": 1}, {"id": 2, "tmdbId": 102},
