@@ -12,6 +12,11 @@ on:
 permissions:
   contents: read
 
+# Only build/test the newest commit on each branch.
+concurrency:
+  group: cross-platform-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   cross-platform:
     strategy:
