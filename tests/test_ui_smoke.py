@@ -382,6 +382,44 @@ class MainWindowSmokeTests(unittest.TestCase):
         self.assertEqual(api.call_args.args[4]["qualityProfileId"], 7)
         self.assertFalse(api.call_args.args[4]["addOptions"]["searchForMovie"])
 
+    def test_routed_import_search_flag_enabled_after_approval(self):
+        batch = {"profile": {"id": "films", "kind": "radarr",
+                             "url": "http://films:7878"},
+                 "items": [{"item_id": 1, "metadata_id": 22,
+                            "duplicate_action": "skip",
+                            "payload": {"title": "Film", "rootFolderPath": "/movies",
+                                        "qualityProfileId": 7}}]}
+        worker = bulkrr.Worker("routed_import_execute", {}, config={
+            "batches": [batch], "credentials": {"films": "secret"},
+            "approved": True, "search": True})
+        results, failures = [], []
+        worker.finished_data.connect(results.append)
+        worker.failed.connect(failures.append)
+        with patch.object(bulkrr, "get_json", side_effect=[[], {"id": 100}]) as api:
+            worker.run()
+        self.assertFalse(failures)
+        self.assertEqual(results[0][0]["status"], "added")
+        self.assertTrue(api.call_args.args[4]["addOptions"]["searchForMovie"])
+
+    def test_routed_import_search_flag_enabled_for_sonarr(self):
+        batch = {"profile": {"id": "shows", "kind": "sonarr",
+                             "url": "http://shows:8989"},
+                 "items": [{"item_id": 1, "metadata_id": 11,
+                            "duplicate_action": "skip",
+                            "payload": {"title": "Show", "rootFolderPath": "/tv",
+                                        "qualityProfileId": 3}}]}
+        worker = bulkrr.Worker("routed_import_execute", {}, config={
+            "batches": [batch], "credentials": {"shows": "secret"},
+            "approved": True, "search": True})
+        results, failures = [], []
+        worker.finished_data.connect(results.append)
+        worker.failed.connect(failures.append)
+        with patch.object(bulkrr, "get_json", side_effect=[[], {"id": 101}]) as api:
+            worker.run()
+        self.assertFalse(failures)
+        self.assertEqual(results[0][0]["status"], "added")
+        self.assertTrue(api.call_args.args[4]["addOptions"]["searchForMissingEpisodes"])
+
     def test_routed_import_worker_refuses_unapproved_writes(self):
         worker = bulkrr.Worker("routed_import_execute", {}, config={
             "batches": [], "credentials": {}, "approved": False})
