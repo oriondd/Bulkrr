@@ -62,6 +62,7 @@ from bulkrr_theme import DARK_THEME
 from bulkrr_library import missing_movies, missing_series
 from bulkrr_bulk import plan_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
+from bulkrr_servers import validate_profiles, legacy_profiles
 
 
 class PosterWorker(QThread):
@@ -703,6 +704,24 @@ class Main(QMainWindow):
             form.addRow("API key", self.key[app])
             form.addRow("Status", status_box)
             self.setup_layout.addWidget(group)
+        self.extra_profiles = legacy_profiles(self.settings)
+        self.extra_profiles = [p for p in self.settings.get("extra_profiles", []) if isinstance(p, dict)]
+        self.extra_connections = {}
+        extra_row = QHBoxLayout()
+        self.extra_list = QListWidget()
+        self.extra_list.setMaximumHeight(100)
+        self.refresh_extra_list()
+        extra_row.addWidget(self.extra_list)
+        extra_buttons = QVBoxLayout()
+        add_extra = QPushButton("Add another server")
+        add_extra.clicked.connect(self.add_extra_server)
+        extra_buttons.addWidget(add_extra)
+        remove_extra = QPushButton("Remove selected")
+        remove_extra.clicked.connect(self.remove_extra_server)
+        extra_buttons.addWidget(remove_extra)
+        extra_row.addLayout(extra_buttons)
+        self.setup_layout.addWidget(QLabel("Additional Sonarr / Radarr instances"))
+        self.setup_layout.addLayout(extra_row)
         self.connect_btn = QPushButton("Test connections and load settings")
         self.connect_btn.clicked.connect(self.connect_servers)
         self.setup_layout.addWidget(self.connect_btn)
@@ -1037,6 +1056,66 @@ class Main(QMainWindow):
             self.connection_leds[app].set_status("disconnected")
             self.connection_labels[app].setText("Connection failed — see Activity log")
 
+    def refresh_extra_list(self):
+        if not hasattr(self, "extra_list"):
+            return
+        self.extra_list.clear()
+        for profile in self.extra_profiles:
+            self.extra_list.addItem(f"{profile['kind'].title()}: {profile['label']} — {profile['url']}")
+
+    def add_extra_server(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Add server profile")
+        form = QFormLayout(dialog)
+        kind = QComboBox()
+        kind.addItems(["sonarr", "radarr"])
+        label = QLineEdit()
+        url = QLineEdit()
+        key = QLineEdit()
+        key.setEchoMode(QLineEdit.EchoMode.Password)
+        form.addRow("Server type", kind)
+        form.addRow("Label", label)
+        form.addRow("Server URL", url)
+        form.addRow("API key", key)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+        form.addRow(buttons)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+        identifier = f"{kind.currentText()}_{len(self.extra_profiles) + 1}"
+        existing = {p["id"] for p in self.extra_profiles}
+        while identifier in existing:
+            identifier += "_new"
+        try:
+            profile = validate_profiles([{"id": identifier, "kind": kind.currentText(), "url": url.text().strip(), "label": label.text().strip()}])[0]
+        except ValueError as exc:
+            QMessageBox.warning(self, "Invalid server", str(exc))
+            return
+        if not key.text().strip():
+            QMessageBox.warning(self, "Missing API key", "Enter an API key for the additional server.")
+            return
+        try:
+            import keyring
+            keyring.set_password("Bulkrr", "profile:" + identifier, key.text().strip())
+        except Exception:
+            QMessageBox.warning(self, "Keyring unavailable", "Could not securely save the API key. Additional server was not added.")
+            return
+        self.extra_profiles.append(profile)
+        self.refresh_extra_list()
+
+    def remove_extra_server(self):
+        row = self.extra_list.currentRow()
+        if row < 0:
+            return
+        profile = self.extra_profiles.pop(row)
+        try:
+            import keyring
+            keyring.delete_password("Bulkrr", "profile:" + profile["id"])
+        except Exception:
+            pass
+        self.refresh_extra_list()
+
     def connect_servers(self):
         self.connections = {}
         for app in ("radarr", "sonarr"):
@@ -1119,7 +1198,7 @@ class Main(QMainWindow):
                 self, "Connect first", "Test your connections before saving."
             )
             return
-        data = {"search": self.search.isChecked()}
+        data = {"search": self.search.isChecked(), "extra_profiles": validate_profiles(self.extra_profiles)}
         for app in ("radarr", "sonarr"):
             data[app + "_url"] = self.url[app].text().strip()
         for name, c in self.combo.items():
