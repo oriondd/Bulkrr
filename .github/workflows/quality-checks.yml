@@ -1,16 +1,7 @@
 name: Bulkrr quality checks
 
+# Run CI only when explicitly requested to avoid runner congestion.
 on:
-  push:
-    branches:
-      - main
-      - refactor/readable-source
-      - feature/phase2-import-experience
-      - feature/phase3-library-management
-      - feature/v2-unified-roadmap
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
