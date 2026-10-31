@@ -179,4 +179,31 @@ QListWidget#dashboardFeatured::item {
     border-radius: 10px; padding: 5px;
 }
 QListWidget#dashboardFeatured::item:hover { border: 1px solid #9c83ff; background: #29284b; }
+
+/* Dashboard hero: gradient spotlight, distinct editorial hierarchy. */
+QWidget#dashboardCinematicHero {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
+        stop:0 #24204b, stop:0.48 #211c45, stop:0.78 #141d3d, stop:1 #0e243a);
+    border: 1px solid #6253a1;
+    border-radius: 22px;
+}
+QLabel#dashboardEyebrow {
+    color: #c1b2ff; font-size: 11px; font-weight: 800;
+    letter-spacing: 2px;
+}
+QLabel#dashboardHero {
+    font-size: 35px; font-weight: 800; color: #ffffff;
+    padding: 6px 0 4px 0;
+}
+QLabel#dashboardHeroCaption {
+    font-size: 14px; color: #c8d0e7; padding: 0 0 12px 0;
+}
+QLabel#dashboardSectionTitle {
+    font-size: 19px; font-weight: 800; color: #f5f3ff;
+    padding: 10px 2px 4px 2px;
+}
+QLabel#dashboardMetric {
+    font-size: 31px; font-weight: 800; color: #e4d9ff;
+    padding: 10px 4px;
+}
 """
