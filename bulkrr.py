@@ -1810,19 +1810,30 @@ class Main(QMainWindow):
             return
         additions = sum(result["action"] == "add" for result in results)
         skipped = len(results) - additions
+        if additions == 0:
+            self.pending_routed_import = None
+            QMessageBox.information(self, "Nothing to import",
+                                    "All selected titles already exist at their destinations.")
+            return
         answer = QMessageBox.question(
             self, "Confirm destination imports",
             f"Add {additions} new title(s) to the selected destination? "
             f"{skipped} existing title(s) will be skipped. "
-            "Automatic download searches will be disabled. "
             "The destination library will be checked again before writing.",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No)
-        if answer != QMessageBox.StandardButton.Yes or additions == 0:
+        if answer != QMessageBox.StandardButton.Yes:
             self.pending_routed_import = None
             return
+        search_answer = QMessageBox.question(
+            self, "Search for missing content?",
+            "Automatically search for missing movies and episodes after adding "
+            "the approved titles? Choose No to add without searching.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.Yes)
         config = dict(pending)
-        config.update({"approved": True, "search": False})
+        config.update({"approved": True,
+                       "search": search_answer == QMessageBox.StandardButton.Yes})
         self.pending_routed_import = None
         # The preview's finished_data signal can arrive before its thread exits.
         # Start the write worker only after that thread has fully finished.
