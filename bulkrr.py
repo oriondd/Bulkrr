@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QStyledItemDelegate,
     QStyle,
+    QScrollArea,
     QDialog,
     QDialogButtonBox,
     QListWidget,
@@ -1375,6 +1376,7 @@ class Main(QMainWindow):
         self.discover_results.setWordWrap(True)
         self.discover_results.setUniformItemSizes(False)
         self.discover_results.setMouseTracking(True)
+        self.discover_results.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.discover_results.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.discover_add = QPushButton("Add selected titles to import review")
         self.discover_add.clicked.connect(self.queue_discovered)
@@ -1486,9 +1488,16 @@ class Main(QMainWindow):
         self.discover_detail_overview.setWordWrap(True)
         self.discover_detail_overview.setTextFormat(Qt.TextFormat.PlainText)
         self.discover_detail_overview.setAlignment(Qt.AlignmentFlag.AlignTop)
-        detail_layout.addWidget(self.discover_detail_overview, 1)
-        self.discover_detail_overview.setMaximumHeight(185)
-        detail_layout.addStretch()
+        self.discover_detail_overview.setSizePolicy(
+            self.discover_detail_overview.sizePolicy().Policy.Preferred,
+            self.discover_detail_overview.sizePolicy().Policy.Maximum,
+        )
+        detail_scroll = QScrollArea()
+        detail_scroll.setObjectName("discoverSynopsisScroll")
+        detail_scroll.setWidgetResizable(True)
+        detail_scroll.setFrameShape(QScrollArea.Shape.NoFrame)
+        detail_scroll.setWidget(self.discover_detail_overview)
+        detail_layout.addWidget(detail_scroll, 1)
         self.discover_detail_queue = QPushButton("Add this title to import review")
         self.discover_detail_queue.setEnabled(False)
         self.discover_detail_queue.clicked.connect(self.queue_discovery_detail)
@@ -1621,6 +1630,7 @@ class Main(QMainWindow):
         self.dashboard_featured.setIconSize(QSize(90, 128))
         self.dashboard_featured.setGridSize(QSize(132, 182))
         self.dashboard_featured.setFixedHeight(208)
+        self.dashboard_featured.setHorizontalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
         self.dashboard_featured.itemDoubleClicked.connect(
             lambda item: tabs.setCurrentIndex(4)
         )
