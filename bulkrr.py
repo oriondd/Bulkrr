@@ -2185,7 +2185,7 @@ class Main(QMainWindow):
             }
             match = (
                 item["matches"][item["selected"]]
-                if item.get("selected", -1) >= 0 and item.get("matches")
+                if 0 <= item.get("selected", -1) < len(item.get("matches", []))
                 else None
             )
             kind = match["type"] if match else "—"
@@ -2201,14 +2201,14 @@ class Main(QMainWindow):
             )
             values = (
                 item["input"],
-                match["label"] if match else "—",
+                (match.get("label") or match.get("data", {}).get("title") or item["input"]) if match else "—",
                 kind,
                 folder or "—",
                 quality,
-                item["message"],
+                item.get("message", ""),
             )
             led = StatusLED(status)
-            led.set_status(status, item["message"])
+            led.set_status(status, item.get("message", ""))
             holder = QWidget()
             holder_layout = QHBoxLayout(holder)
             holder_layout.setContentsMargins(0, 0, 0, 0)
@@ -2318,15 +2318,15 @@ class Main(QMainWindow):
             self.poster.setText("No poster available")
             self.preview_info.setText(item.get("message", "No metadata match"))
             return
-        obj = match["data"]
+        obj = match.get("data") or {}
         overview = (obj.get("overview") or "No synopsis available.").strip()
         if len(overview) > 440:
             overview = overview[:437] + "..."
         self.preview_info.setText(
             f"{obj.get('title','Unknown')} ({obj.get('year') or '?'})\n"
-            f"{match['type'].upper()} · {match['app'].title()} · Match score: {match['score']:.0%}\n"
+            f"{match.get('type', 'unknown').upper()} · {match.get('app', 'unknown').title()} · Match score: {match.get('score', 0):.0%}\n"
             f"{match_confidence(match, item.get('matches', []))}\n"
-            f"{item['message']}\n\n{overview}"
+            f"{item.get('message', '')}\n\n{overview}"
         )
         self.fetch_poster(match, self.poster)
 
