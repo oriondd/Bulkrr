@@ -109,6 +109,9 @@ def normalize_collection(payload):
             "title": title, "year": year, "type": "movie",
             "overview": str(movie.get("overview") or "")[:1000],
             "genres": [], "tmdb_id": ident, "popularity": 0,
+            "poster_url": ("https://image.tmdb.org/t/p/w342" + movie["poster_path"])
+                if isinstance(movie.get("poster_path"), str)
+                and re.fullmatch(r"/[A-Za-z0-9_-]+\\.(?:jpg|jpeg|png|webp)", movie["poster_path"]) else None,
         })
     return records
 
