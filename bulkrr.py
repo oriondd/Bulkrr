@@ -1664,15 +1664,30 @@ class Main(QMainWindow):
         elif category == "New releases (TV)":
             self.load_tmdb_new_releases("tv")
 
+    def get_tmdb_token(self):
+        """Reuse the TMDB read token for this session only; never persist it."""
+        token = getattr(self, "_tmdb_session_token", "")
+        if token:
+            return token
+        token, accepted = QInputDialog.getText(
+            self, "TMDB discovery",
+            "Enter your TMDB API read access token (kept in memory for this session only):",
+            QLineEdit.EchoMode.Password,
+        )
+        if not accepted or not token.strip():
+            return ""
+        token = token.strip()
+        if len(token) > 512 or any(char.isspace() for char in token):
+            QMessageBox.warning(self, "Invalid token", "Enter a valid TMDB read access token.")
+            return ""
+        self._tmdb_session_token = token
+        return token
+
     def load_tmdb_new_releases(self, kind):
         if self.worker and self.worker.isRunning():
             return
-        access_token, accepted = QInputDialog.getText(
-            self, "TMDB new releases",
-            "Enter your TMDB API read access token (not saved):",
-            QLineEdit.EchoMode.Password,
-        )
-        if not accepted or not access_token.strip():
+        access_token = self.get_tmdb_token()
+        if not access_token:
             return
         self.run_worker(
             "new_releases_tmdb",
@@ -1689,11 +1704,8 @@ class Main(QMainWindow):
     def load_tmdb_trending(self, kind, window="week"):
         if self.worker and self.worker.isRunning():
             return
-        access_token, accepted = QInputDialog.getText(
-            self, "TMDB discovery", "Enter your TMDB API read access token (not saved):",
-            QLineEdit.EchoMode.Password,
-        )
-        if not accepted or not access_token.strip():
+        access_token = self.get_tmdb_token()
+        if not access_token:
             return
         self.tmdb_movie_button.setEnabled(False)
         self.tmdb_tv_button.setEnabled(False)
