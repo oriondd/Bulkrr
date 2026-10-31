@@ -504,7 +504,7 @@ class Worker(QThread):
                         if not found:
                             folder = self.config.get(f"{typ}_folder")
                             profile = self.config.get(f"{app}_profile")
-                            if not folder or not profile:
+                            if folder is None or folder == "" or profile is None or profile == "":
                                 results.append(
                                     (
                                         item["input"],
@@ -637,7 +637,7 @@ class Worker(QThread):
                         continue
                     folder = self.config.get(f"{typ}_folder")
                     profile = self.config.get(f"{app}_profile")
-                    if not folder or not profile:
+                    if folder is None or folder == "" or profile is None or profile == "":
                         results.append(
                             (
                                 item["input"],
