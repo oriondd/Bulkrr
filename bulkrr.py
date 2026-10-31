@@ -64,6 +64,7 @@ from bulkrr_bulk import plan_searches, estimate_storage
 from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_servers import validate_profiles, legacy_profiles
 from bulkrr_updates import fetch_latest_release, update_available
+from bulkrr_sessions import save_review, load_review
 
 
 class PosterWorker(QThread):
@@ -775,6 +776,8 @@ class Main(QMainWindow):
             ("Import TXT / CSV", self.choose_import_files),
             ("Save title list", self.save_import_session),
             ("Load title list", self.resume_import_session),
+            ("Save review snapshot", self.save_review_snapshot),
+            ("Load review snapshot", self.load_review_snapshot),
         ):
             button = QPushButton(label)
             button.clicked.connect(handler)
@@ -1274,6 +1277,34 @@ class Main(QMainWindow):
         self.items = []
         self.refresh()
         self.logmsg(f"Loaded {len(paths)} file(s); {len(titles)} unique titles ready for analysis")
+
+    def save_review_snapshot(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Save review snapshot", "bulkrr-review.json", "Bulkrr review (*.json)")
+        if not path:
+            return
+        try:
+            save_review(path, self.input.toPlainText(), self.items)
+        except (OSError, ValueError) as exc:
+            QMessageBox.warning(self, "Could not save review", str(exc))
+            return
+        self.logmsg("Review snapshot saved (credentials excluded)")
+
+    def load_review_snapshot(self):
+        if self.worker and self.worker.isRunning():
+            return
+        path, _ = QFileDialog.getOpenFileName(self, "Load review snapshot", "", "Bulkrr review (*.json)")
+        if not path:
+            return
+        try:
+            data = load_review(path)
+        except (OSError, ValueError, UnicodeError) as exc:
+            QMessageBox.warning(self, "Could not load review", str(exc))
+            return
+        self.input.setPlainText("\n".join(data["titles"]))
+        self.items = []
+        self.refresh()
+        self.logmsg(f"Restored {len(data['titles'])} titles and {len(data['review'])} historical review records; reanalyze to verify live matches and duplicates")
+        QMessageBox.information(self, "Review restored", "Title inputs restored. Saved review decisions are historical only; run Analyze to refresh matches and duplicate checks before importing.")
 
     def save_import_session(self):
         path, _ = QFileDialog.getSaveFileName(
