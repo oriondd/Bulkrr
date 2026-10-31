@@ -1,0 +1,39 @@
+name: Bulkrr Windows preview build
+
+on:
+  push:
+    branches:
+      - feature/v2-unified-roadmap
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-preview:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install build dependencies
+        run: python -m pip install -r requirements.txt pyinstaller
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Package Windows preview
+        shell: pwsh
+        run: |
+          $args = @("--noconfirm", "--clean", "--windowed", "--name", "Bulkrr-2.0-preview")
+          if (Test-Path "Bulkrr.ico") { $args += @("--icon", "Bulkrr.ico") }
+          if (Test-Path "Bulkrr.png") { $args += @("--add-data", "Bulkrr.png;.") }
+          $args += "bulkrr.py"
+          python -m PyInstaller @args
+      - name: Upload Windows test artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bulkrr-2.0-Windows-preview
+          path: dist/Bulkrr-2.0-preview/
+          if-no-files-found: error
+          retention-days: 14
