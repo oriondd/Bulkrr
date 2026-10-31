@@ -65,6 +65,7 @@ from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_servers import validate_profiles, legacy_profiles
 from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
+from bulkrr_calendar import fetch_schedule
 
 
 class PosterWorker(QThread):
@@ -142,6 +143,8 @@ class Worker(QThread):
                         f"{app.title()} connected (v{info.get('version','?')})."
                     )
                 self.finished_data.emit(result)
+            elif self.task == "release_calendar":
+                self.finished_data.emit(fetch_schedule())
             elif self.task == "discover":
                 kind = self.config["kind"]
                 app = "radarr" if kind == "movie" else "sonarr"
@@ -899,6 +902,11 @@ class Main(QMainWindow):
         self.discover_add = QPushButton("Add selected titles to import review")
         self.discover_add.clicked.connect(self.queue_discovered)
         discover_layout.addWidget(self.discover_add)
+        calendar_btn = QPushButton("Load today's US TV release calendar")
+        calendar_btn.clicked.connect(self.load_calendar)
+        discover_layout.addWidget(calendar_btn)
+        self.calendar_results = QListWidget()
+        discover_layout.addWidget(self.calendar_results)
         tabs.addTab(discover_page, "4. Discover")
         self.log = QTextEdit()
         self.log.setReadOnly(True)
@@ -941,6 +949,20 @@ class Main(QMainWindow):
             summary += " | Errors: " + "; ".join(data["errors"])
         self.library_summary.setText(summary)
         self.logmsg("Library inventory: " + summary)
+
+    def load_calendar(self):
+        if self.worker and self.worker.isRunning():
+            return
+        self.run_worker("release_calendar", done=self.calendar_loaded)
+
+    def calendar_loaded(self, entries):
+        self.calendar_results.clear()
+        for entry in entries:
+            season = entry["season"]
+            episode = entry["episode"]
+            detail = f"S{season:02d}E{episode:02d}" if isinstance(season, int) and isinstance(episode, int) else "New episode"
+            self.calendar_results.addItem(f"{entry['date']} — {entry['title']} — {detail}")
+        self.logmsg(f"Loaded {len(entries)} scheduled US TV episodes")
 
     def discover_titles(self):
         if self.worker and self.worker.isRunning():
