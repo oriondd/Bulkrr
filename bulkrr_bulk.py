@@ -29,4 +29,6 @@ def estimate_storage(item_count, average_gib):
         raise ValueError("Item count must be a nonnegative integer")
     if not isinstance(average_gib, (float, int)) or isinstance(average_gib, bool) or average_gib < 0:
         raise ValueError("Average size must be nonnegative")
+    if average_gib == float("inf") or average_gib != average_gib:
+        raise ValueError("Average size must be finite")
     return round(item_count * average_gib, 2)
