@@ -16,9 +16,13 @@ class MainWindowSmokeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
+        # Headless UI tests must not start background HTTP poster threads.
+        cls.poster_patch = patch.object(bulkrr, "poster_url", return_value=None)
+        cls.poster_patch.start()
 
     @classmethod
     def tearDownClass(cls):
+        cls.poster_patch.stop()
         # Destroy native Qt objects while QApplication is still alive.
         cls.app.closeAllWindows()
         cls.app.processEvents()
