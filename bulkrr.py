@@ -3119,6 +3119,18 @@ class Main(QMainWindow):
                 and item["matches"][item["selected"]].get("type") == "movie"
             )
         ]
+        invalid_actions = [
+            item.get("input", "Unknown title")
+            for item in pending
+            if item.get("action", "add") not in ("add", "skip", "upgrade", "replace")
+        ]
+        if invalid_actions:
+            QMessageBox.warning(
+                self, "Invalid import actions",
+                f"{len(invalid_actions)} approved title(s) have unknown actions. "
+                "Review them before importing: " + ", ".join(invalid_actions[:5]),
+            )
+            return
         if invalid:
             QMessageBox.warning(
                 self, "Invalid approved matches",
