@@ -512,6 +512,32 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_edit_recheck_rejects_duplicate_input_without_network(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.server_data = {"connected": True}
+                        window.input.setPlainText("movie: Alien\\nmovie: Arrival")
+                        window.items = [
+                            {"input": "movie: Alien", "status": "review", "matches": [],
+                             "selected": -1, "message": "Review"},
+                            {"input": "movie: Arrival", "status": "review", "matches": [],
+                             "selected": -1, "message": "Review"},
+                        ]
+                        window.refresh()
+                        window.table.selectRow(0)
+                        with patch.object(bulkrr.QInputDialog, "getText", return_value=("movie: Arrival", True)):
+                            with patch.object(bulkrr.QMessageBox, "warning") as warning:
+                                with patch.object(window, "run_worker") as run_worker:
+                                    window.edit_selected_title()
+                                    warning.assert_called_once()
+                                    run_worker.assert_not_called()
+                        self.assertEqual(window.input.toPlainText(), "movie: Alien\\nmovie: Arrival")
+                    finally:
+                        window.close()
+
     def test_partial_category_decisions_preserve_previous_manual_choices(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
