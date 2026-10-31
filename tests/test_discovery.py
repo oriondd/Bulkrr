@@ -33,6 +33,16 @@ class DiscoveryTests(unittest.TestCase):
             {"title": "", "type": "tv"},
         ]), ["movie: Film (2026)", "anime: Show"])
 
+    def test_genres_are_bounded_and_nonfinite_popularity_is_sanitized(self):
+        records = normalize_discovery([
+            {"title": "Example", "genres": ["Mystery", 123, "Thriller"], "popularity": float("nan")},
+            {"title": "Another", "genres": "not-a-list", "popularity": float("inf")},
+        ], "tv")
+        self.assertEqual(records[0]["genres"], ["Mystery", "Thriller"])
+        self.assertEqual(records[0]["popularity"], 0)
+        self.assertEqual(records[1]["genres"], [])
+        self.assertEqual(records[1]["popularity"], 0)
+
     def test_unknown_category_rejected(self):
         with self.assertRaises(ValueError):
             normalize_discovery([], "podcast")
