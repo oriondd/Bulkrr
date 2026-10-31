@@ -28,6 +28,8 @@ jobs:
           $args = @("--noconfirm", "--clean", "--windowed", "--name", "Bulkrr-2.0-preview")
           if (Test-Path "Bulkrr.ico") { $args += @("--icon", "Bulkrr.ico") }
           if (Test-Path "Bulkrr.png") { $args += @("--add-data", "Bulkrr.png;.") }
+          if (Test-Path "Bulkrr.ico") { $args += @("--add-data", "Bulkrr.ico;.") }
+          if (Test-Path "Bulkrr-splash.png") { $args += @("--add-data", "Bulkrr-splash.png;.") }
           $args += "bulkrr.py"
           python -m PyInstaller @args
       - name: Install Inno Setup
