@@ -15,7 +15,8 @@ def write_settings(path, settings):
             for key, item in value.items():
                 if not isinstance(key, str):
                     raise ValueError("Settings keys must be text")
-                if key.casefold().replace("-", "_") in forbidden:
+                normalized = key.casefold().replace("-", "_")
+                if (normalized in forbidden or normalized.endswith(("_api_key", "_apikey", "_password", "_secret", "_token"))):
                     raise ValueError("Credentials cannot be written to settings")
                 validate(item)
         elif isinstance(value, list):
