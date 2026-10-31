@@ -2608,9 +2608,20 @@ class Main(QMainWindow):
         if not updated or updated == previous:
             return
         lines = self.input.toPlainText().splitlines()
-        if previous in lines:
-            lines[lines.index(previous)] = updated
-            self.input.setPlainText("\n".join(lines))
+        if previous not in lines:
+            QMessageBox.warning(
+                self, "Input changed",
+                "The original title is no longer in the input list. Analyze the updated list first.",
+            )
+            return
+        if updated in lines and updated != previous:
+            QMessageBox.warning(
+                self, "Duplicate input",
+                "That corrected title is already in the input list. Choose a distinct title.",
+            )
+            return
+        lines[lines.index(previous)] = updated
+        self.input.setPlainText("\n".join(lines))
         self._edit_recheck_row = row
         self._edit_recheck_previous = list(self.items)
         self.items[row] = {
