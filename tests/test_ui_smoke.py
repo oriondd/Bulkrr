@@ -549,7 +549,7 @@ class MainWindowSmokeTests(unittest.TestCase):
                         window.items = [{
                             "input": "movie: Alien", "status": "ready", "selected": 0,
                             "matches": [{"label": "Alien", "type": "movie", "app": "radarr",
-                                         "data": {"title": "Alien"}}], "message": "Ready",
+                                         "id": 348, "data": {"title": "Alien"}}], "message": "Ready",
                         }]
                         window.refresh()
                         with patch.object(bulkrr.QMessageBox, "question",
