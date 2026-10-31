@@ -916,6 +916,12 @@ class Main(QMainWindow):
         self.clear_analysis_btn.clicked.connect(self.clear_analysis)
         self.clear_analysis_btn.setEnabled(False)
         v.addWidget(self.clear_analysis_btn)
+        self.category_policy_label = QLabel(
+            "Batch rules (preview only): existing = skip | unmatched = exclude | "
+            "ambiguous = review. Nothing is sent to Radarr/Sonarr until final approval."
+        )
+        self.category_policy_label.setWordWrap(True)
+        v.addWidget(self.category_policy_label)
         self.review_summary_label = QLabel(review_summary([]))
         self.review_summary_label.setWordWrap(True)
         self.review_summary_label.setObjectName("reviewSummary")
@@ -2218,9 +2224,38 @@ class Main(QMainWindow):
 
     def analyzed(self, items):
         self.items = items
+        self.apply_category_decisions()
         self.refresh()
         self.logmsg(
-            f"Analysis finished: {len(items)} titles; {sum(bool(x.get('duplicate')) for x in items)} existing library titles detected. Review yellow and red duplicate items before importing."
+            f"Analysis finished: {len(items)} titles; "
+            f"{sum(bool(x.get('duplicate')) for x in items)} existing library titles detected. "
+            "Existing titles were skipped and unmatched titles excluded; review remaining yellow entries."
+        )
+
+    def apply_category_decisions(self):
+        """Local review decisions only. No Radarr/Sonarr API writes."""
+        counts = {"existing": 0, "unmatched": 0, "ambiguous": 0}
+        for item in self.items:
+            if item.get("message") == "Analysis stopped before lookup":
+                continue
+            if item.get("duplicate"):
+                item["status"] = "skipped"
+                item["action"] = "skip"
+                item["message"] = "Existing library title — skipped automatically"
+                counts["existing"] += 1
+            elif not item.get("matches") and item.get("status") == "error":
+                item["status"] = "skipped"
+                item["action"] = "skip"
+                item["message"] = "No reliable metadata match — excluded from import"
+                counts["unmatched"] += 1
+            elif item.get("status") == "review":
+                item["action"] = "review"
+                counts["ambiguous"] += 1
+        self.logmsg(
+            "Preview-only category decisions: "
+            f"{counts['existing']} existing skipped, "
+            f"{counts['unmatched']} unmatched excluded, "
+            f"{counts['ambiguous']} held for manual review"
         )
 
     def refresh(self):
