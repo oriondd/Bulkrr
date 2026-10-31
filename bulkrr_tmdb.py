@@ -79,3 +79,50 @@ def fetch_trending(kind, access_token, window="week", limit=20):
     if len(raw) > 512 * 1024:
         raise ValueError("TMDB response exceeds size limit")
     return normalize_trending(json.loads(raw.decode("utf-8")), kind)[:limit]
+
+
+def normalize_collection(payload):
+    """Return movie candidates from a verified TMDB collection detail response."""
+    if not isinstance(payload, dict) or not isinstance(payload.get("parts"), list):
+        raise ValueError("TMDB returned invalid collection metadata")
+    records, seen = [], set()
+    for movie in payload["parts"][:200]:
+        if not isinstance(movie, dict):
+            continue
+        title = movie.get("title")
+        if not isinstance(title, str) or not title.strip():
+            continue
+        title = title.strip()[:250]
+        date = movie.get("release_date")
+        year = int(date[:4]) if isinstance(date, str) and len(date) >= 4 and date[:4].isdigit() else None
+        if year is not None and not 1880 <= year <= 2200:
+            year = None
+        ident = movie.get("id")
+        if type(ident) is not int or ident <= 0 or ident in seen:
+            continue
+        seen.add(ident)
+        records.append({
+            "title": title, "year": year, "type": "movie",
+            "overview": str(movie.get("overview") or "")[:1000],
+            "genres": [], "tmdb_id": ident, "popularity": 0,
+        })
+    return records
+
+
+def fetch_collection(collection_id, access_token):
+    """Fetch one explicitly identified TMDB collection; never modify libraries."""
+    if type(collection_id) is not int or not 1 <= collection_id <= 2_147_483_647:
+        raise ValueError("Collection ID must be a positive integer")
+    if (not isinstance(access_token, str) or not access_token.strip()
+            or len(access_token) > 512 or any(ch.isspace() for ch in access_token)):
+        raise ValueError("Provide a TMDB API read access token")
+    request = urllib.request.Request(
+        f"{BASE}/collection/{collection_id}?language=en-US",
+        headers={"Accept": "application/json", "User-Agent": "Bulkrr/2.0",
+                 "Authorization": "Bearer " + access_token.strip()},
+    )
+    with urllib.request.urlopen(request, timeout=12) as response:
+        raw = response.read(1024 * 1024 + 1)
+    if len(raw) > 1024 * 1024:
+        raise ValueError("TMDB collection response exceeds size limit")
+    return normalize_collection(json.loads(raw.decode("utf-8")))
