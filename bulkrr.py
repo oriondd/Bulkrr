@@ -1584,7 +1584,31 @@ class Main(QMainWindow):
         if 0 <= index < len(self.items):
             self.items[index]["status"] = status
             self.items[index]["message"] = message
-            self.refresh()
+            # Progress events can arrive thousands of times during a bulk import.
+            # Update the affected row instead of rebuilding the entire table.
+            if self.table.rowCount() != len(self.items) or not self.table.item(index, 0):
+                self.refresh()
+            else:
+                colors = {
+                    "ready": "#62e49b", "done": "#62e49b",
+                    "skipped": "#8292A9", "review": "#ffce69",
+                    "duplicate": "#ff7272", "error": "#ff7272",
+                    "failed": "#ff7272", "working": "#77bfff",
+                }
+                color = QBrush(QColor(colors.get(status, "#e9edf6")))
+                indicator = self.table.item(index, 0)
+                indicator.setForeground(color)
+                indicator.setToolTip(f"{status}: {message}")
+                message_cell = self.table.item(index, 6)
+                if message_cell:
+                    message_cell.setText(message)
+                for col in range(1, 7):
+                    cell = self.table.item(index, col)
+                    if cell:
+                        cell.setForeground(color)
+                self.review_summary_label.setText(review_summary(self.items))
+                self.apply_review_filter()
+                self.update_review_actions()
 
     def run_worker(self, task, items=None, config=None, done=None):
         if self.worker and self.worker.isRunning():
