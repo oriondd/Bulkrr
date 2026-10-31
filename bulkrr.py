@@ -475,7 +475,10 @@ class Worker(QThread):
                     try:
                         if app not in existing_by_app:
                             library = self.call(app, endpoint)
-                            if not isinstance(library, list):
+                            if (
+                                not isinstance(library, list)
+                                or any(not isinstance(entry, dict) for entry in library)
+                            ):
                                 raise ValueError(
                                     f"{app.title()} returned an invalid library listing"
                                 )
