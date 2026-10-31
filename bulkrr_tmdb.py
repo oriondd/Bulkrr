@@ -38,6 +38,8 @@ def normalize_trending(payload, kind):
         if not isinstance(raw_date, str):
             raw_date = ""
         year = int(raw_date[:4]) if len(raw_date) >= 4 and raw_date[:4].isdigit() else None
+        if year is not None and not 1880 <= year <= 2200:
+            year = None
         key = (title.casefold(), year)
         if key in seen:
             continue
@@ -50,7 +52,7 @@ def normalize_trending(payload, kind):
             "type": kind,
             "year": year,
             "overview": str(record.get("overview") or "")[:1000],
-            "popularity": 0,
+            "popularity": 0,  # TMDB trending endpoint already supplies ranked results
             "genres": [GENRES[genre] for genre in genres[:20] if type(genre) is int and genre in GENRES],
             "release_date": raw_date,
             "tmdb_id": record.get("id") if type(record.get("id")) is int else None,
