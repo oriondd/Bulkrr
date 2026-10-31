@@ -14,6 +14,7 @@ QUERY = """query ($page: Int, $perPage: Int) {
       startDate { year }
       description(asHtml: false)
       genres
+      coverImage { large }
       trending
     }
   }
@@ -67,6 +68,8 @@ def parse_trending(payload):
             "popularity": score,
             "genres": genres,
             "release_date": str(year) if year else "",
+            "poster_url": (record.get("coverImage") or {}).get("large")
+                if isinstance(record.get("coverImage"), dict) else None,
         })
     return result
 
