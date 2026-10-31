@@ -749,6 +749,29 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_unknown_approved_action_blocks_import(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.settings = {"search": True}
+                        window.server_data = {"radarr": {}}
+                        window.items = [{
+                            "input": "movie: Unsafe", "status": "ready",
+                            "selected": 0, "action": "delete",
+                            "matches": [{"app": "radarr", "type": "movie",
+                                         "id": 123, "data": {"title": "Unsafe"}}],
+                            "message": "Ready",
+                        }]
+                        with patch.object(window, "run_worker") as worker:
+                            with patch.object(bulkrr.QMessageBox, "warning") as warning:
+                                window.import_items()
+                        worker.assert_not_called()
+                        self.assertIn("Invalid import actions", warning.call_args.args)
+                    finally:
+                        window.close()
+
     def test_missing_ready_selection_blocks_import(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
