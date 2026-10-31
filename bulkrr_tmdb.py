@@ -8,6 +8,18 @@ import urllib.request
 
 BASE = "https://api.themoviedb.org/3"
 
+GENRES = {
+    12: "Adventure", 14: "Fantasy", 16: "Animation", 18: "Drama",
+    27: "Horror", 28: "Action", 35: "Comedy", 36: "History",
+    37: "Western", 53: "Thriller", 80: "Crime", 99: "Documentary",
+    878: "Science Fiction", 9648: "Mystery", 10402: "Music",
+    10749: "Romance", 10751: "Family", 10752: "War",
+    10759: "Action & Adventure", 10762: "Kids", 10763: "News",
+    10764: "Reality", 10765: "Sci-Fi & Fantasy", 10766: "Soap",
+    10767: "Talk", 10768: "War & Politics",
+}
+
+
 
 def normalize_trending(payload, kind):
     if kind not in ("movie", "tv"):
@@ -39,7 +51,7 @@ def normalize_trending(payload, kind):
             "year": year,
             "overview": str(record.get("overview") or "")[:1000],
             "popularity": 0,
-            "genres": [],
+            "genres": [GENRES[genre] for genre in genres[:20] if type(genre) is int and genre in GENRES],
             "release_date": raw_date,
             "tmdb_id": record.get("id") if type(record.get("id")) is int else None,
         })
