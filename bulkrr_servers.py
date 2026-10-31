@@ -124,3 +124,36 @@ def check_routed_libraries(routes, fetch_library):
             results.append({"profile_id": identifier, "item_ids": list(ids),
                             "library_count": None, "error": str(exc)})
     return results
+
+
+def plan_routed_imports(profiles, assignments, destinations):
+    """Validate per-server import settings without contacting or changing servers.
+
+    Each routed destination must explicitly provide its own root folders and
+    quality profile ID. Never reuse the currently active server's settings.
+    """
+    routes = route_to_profiles(profiles, assignments)
+    if not isinstance(destinations, dict):
+        raise ValueError("Destination settings must be a mapping")
+    planned = []
+    for route in routes:
+        profile = route["profile"]
+        options = destinations.get(profile["id"])
+        if not isinstance(options, dict):
+            raise ValueError("Missing settings for destination " + profile["id"])
+        quality = options.get("quality_profile_id")
+        if type(quality) is not int or quality <= 0:
+            raise ValueError("Destination requires a positive quality profile ID")
+        folders = options.get("root_folders")
+        if not isinstance(folders, dict):
+            raise ValueError("Destination requires explicit root folders")
+        required = ("movie",) if profile["kind"] == "radarr" else ("tv", "anime")
+        clean_folders = {}
+        for category in required:
+            folder = folders.get(category)
+            if not isinstance(folder, str) or not folder.strip():
+                raise ValueError("Missing destination root folder: " + category)
+            clean_folders[category] = folder.strip()
+        planned.append({"profile": dict(profile), "item_ids": list(route["item_ids"]),
+                        "quality_profile_id": quality, "root_folders": clean_folders})
+    return planned
