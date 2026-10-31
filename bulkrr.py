@@ -1053,13 +1053,15 @@ class Main(QMainWindow):
     def discovered(self, records):
         self.discover_button.setEnabled(True)
         self.discover_records = records
+        if not getattr(self, "_ranking_discovery", False):
+            self.discover_source_records = list(records)
         self.discover_results.clear()
         for entry in records:
             self.discover_results.addItem(f"{entry['title']} ({entry['year'] or '?'}) — {entry['type']}")
         self.logmsg(f"Discovery returned {len(records)} matching titles")
 
     def rank_discovery(self):
-        records = getattr(self, "discover_records", [])
+        records = getattr(self, "discover_source_records", [])
         if not records:
             QMessageBox.information(self, "No discovery results", "Discover titles or load trending anime first.")
             return
@@ -1071,7 +1073,11 @@ class Main(QMainWindow):
         if not ranked:
             QMessageBox.information(self, "No matching suggestions", "No current titles match those interests. Try different keywords.")
             return
-        self.discovered(ranked)
+        self._ranking_discovery = True
+        try:
+            self.discovered(ranked)
+        finally:
+            self._ranking_discovery = False
         self.logmsg(f"Locally ranked {len(ranked)} discovery candidates by entered interests")
 
     def queue_discovered(self):
