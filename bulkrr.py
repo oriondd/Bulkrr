@@ -1325,6 +1325,13 @@ class Main(QMainWindow):
         browse_btn.clicked.connect(self.browse_discovery_category)
         trending_row.addWidget(self.discover_category)
         trending_row.addWidget(browse_btn)
+        self.tmdb_token_reset = QPushButton("Change TMDB token")
+        self.tmdb_token_reset.setObjectName("secondaryAction")
+        self.tmdb_token_reset.setToolTip(
+            "Forget the in-memory TMDB token and prompt for a new one on your next TMDB browse"
+        )
+        self.tmdb_token_reset.clicked.connect(self.clear_tmdb_token)
+        trending_row.addWidget(self.tmdb_token_reset)
         for button in (self.trending_anime_button, self.tmdb_movie_button, self.tmdb_tv_button):
             button.setObjectName("secondaryAction")
             trending_row.addWidget(button)
@@ -1663,6 +1670,11 @@ class Main(QMainWindow):
             self.load_tmdb_new_releases("movie")
         elif category == "New releases (TV)":
             self.load_tmdb_new_releases("tv")
+
+    def clear_tmdb_token(self):
+        """Discard session credentials so invalid or rotated tokens can be replaced."""
+        self._tmdb_session_token = ""
+        self.logmsg("TMDB session token cleared; a new token will be requested on next browse")
 
     def get_tmdb_token(self):
         """Reuse the TMDB read token for this session only; never persist it."""
