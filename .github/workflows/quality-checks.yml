@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       QT_QPA_PLATFORM: offscreen
+      PYTHONFAULTHANDLER: '1'
       APPDATA: /tmp/bulkrr-ci-appdata
     steps:
       - name: Check out repository
