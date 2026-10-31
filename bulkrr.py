@@ -516,6 +516,14 @@ class Worker(QThread):
                         continue
                     if found:
                         action = item.get("action", "skip")
+                        if action not in ("skip", "upgrade", "replace"):
+                            results.append(
+                                (item["input"], "red", "Unknown duplicate action")
+                            )
+                            self.progress.emit(
+                                f"  Refused unsafe duplicate action for {obj['title']}: {action!r}"
+                            )
+                            continue
                         if action == "skip":
                             results.append(
                                 (
