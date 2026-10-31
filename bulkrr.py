@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
 )
 
 from bulkrr_paths import config_dir
+from bulkrr_text import clean_media_overview
 
 ASSET_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
 APPDIR = config_dir()
@@ -2030,13 +2031,7 @@ class Main(QMainWindow):
             f"{entry.get('year') or 'Year unknown'}  ·  {entry.get('type', 'media').upper()}\\n"
             + "  ·  ".join(entry.get("genres") or [])
         )
-        overview = html.unescape(str(entry.get("overview") or "No synopsis available.")).strip()
-        # Decode entities before stripping markup so escaped HTML line breaks
-        # are converted to newlines rather than appearing as literal tags.
-        overview = re.sub(r"(?i)<br\s*/?>", "\n", overview)
-        overview = re.sub(r"(?i)</p\s*>", "\n", overview)
-        overview = re.sub(r"<[^>]+>", "", overview)
-        self.discover_detail_overview.setText(overview.strip())
+        self.discover_detail_overview.setText(clean_media_overview(entry.get("overview")))
         url = entry.get("poster_url")
         self.discover_detail_poster.setProperty("poster_url", "")
         self.discover_detail_poster.setPixmap(QPixmap())
