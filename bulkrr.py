@@ -1640,6 +1640,8 @@ class Main(QMainWindow):
             self.worker.failed.connect(self.edited_title_failed)
         if task == "analyze" and done == self.resumed_analysis:
             self.worker.failed.connect(self.resume_analysis_failed)
+        if task == "import":
+            self.worker.failed.connect(self.import_failed)
         self.worker.failed.connect(
             lambda e: (
                 self.connection_error() if task == "connect" else None,
@@ -3081,6 +3083,16 @@ class Main(QMainWindow):
             config={**self.settings, "dry_run": dry_run, "search": search_after_approval},
             done=self.imported,
         )
+
+    def import_failed(self, error):
+        """Do not leave queued import rows looking indefinitely in progress."""
+        for row in getattr(self, "active_import_rows", []):
+            if 0 <= row < len(self.items) and self.items[row].get("status") == "working":
+                self.items[row]["status"] = "failed"
+                self.items[row]["message"] = "Import interrupted — verify server state before retrying"
+        self.active_import_rows = []
+        self.refresh()
+        self.logmsg("Import worker failed; verify Radarr/Sonarr before retrying")
 
     def imported(self, results):
         for name, status, message in results:
