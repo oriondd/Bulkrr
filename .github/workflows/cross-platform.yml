@@ -1,12 +1,7 @@
 name: Bulkrr cross-platform verification
 
+# Run CI only when explicitly requested to avoid runner congestion.
 on:
-  push:
-    branches:
-      - feature/v2-unified-roadmap
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
