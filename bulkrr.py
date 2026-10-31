@@ -1266,6 +1266,11 @@ class Main(QMainWindow):
         self.refresh()
         self.url[app].setText(profile["url"])
         self.key[app].setText(secret)
+        # Clear the other server's credentials: a profile switch must not
+        # silently reuse an unrelated destination from the previous session.
+        other = "sonarr" if app == "radarr" else "radarr"
+        self.url[other].clear()
+        self.key[other].clear()
         for name, combo in self.combo.items():
             combo.clear()
         for name in self.connection_labels:
