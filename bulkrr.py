@@ -631,9 +631,14 @@ class Worker(QThread):
                     try:
                         added = self.call(app, endpoint, "POST", obj)
                         # Keep the cached snapshot current after additions.
-                        if isinstance(added, dict):
+                        if (
+                            isinstance(added, dict)
+                            and str(added.get(identifier, "")) == str(m["id"])
+                        ):
                             existing_by_app[app].append(added)
                         else:
+                            # An incomplete API response cannot safely prove
+                            # what was added. Refresh before the next title.
                             existing_by_app.pop(app, None)
                         results.append(
                             (
