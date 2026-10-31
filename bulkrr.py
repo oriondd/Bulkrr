@@ -1319,7 +1319,15 @@ class Main(QMainWindow):
         advanced_layout.addLayout(genre_row)
         discover_layout.addWidget(advanced_panel)
 
-        discover_layout.addWidget(QLabel("Results — select one or more titles to queue"))
+        catalog_heading = QHBoxLayout()
+        self.discover_section_title = QLabel("Explore the catalog")
+        self.discover_section_title.setObjectName("catalogHeading")
+        catalog_heading.addWidget(self.discover_section_title)
+        catalog_heading.addStretch()
+        self.discover_count = QLabel("Choose a category or search to load titles")
+        self.discover_count.setObjectName("appSubtitle")
+        catalog_heading.addWidget(self.discover_count)
+        discover_layout.addLayout(catalog_heading)
         catalog_row = QHBoxLayout()
         catalog_row.addWidget(self.discover_results, 3)
         detail_panel = QGroupBox("Media details")
@@ -1343,6 +1351,10 @@ class Main(QMainWindow):
         self.discover_detail_overview.setAlignment(Qt.AlignmentFlag.AlignTop)
         detail_layout.addWidget(self.discover_detail_overview)
         detail_layout.addStretch()
+        self.discover_detail_queue = QPushButton("Add this title to import review")
+        self.discover_detail_queue.setEnabled(False)
+        self.discover_detail_queue.clicked.connect(self.queue_discovery_detail)
+        detail_layout.addWidget(self.discover_detail_queue)
         self.discover_results.currentRowChanged.connect(self.show_discovery_details)
         catalog_row.addWidget(detail_panel, 1)
         discover_layout.addLayout(catalog_row, 1)
@@ -1592,6 +1604,7 @@ class Main(QMainWindow):
             self.discover_source_records = list(records)
         self.discover_results.clear()
         self.show_discovery_details(-1)
+        self.discover_count.setText(f"{len(records)} titles")
         for entry in records:
             title = entry["title"]
             year = entry.get("year") or "—"
@@ -1633,6 +1646,7 @@ class Main(QMainWindow):
 
     def show_discovery_details(self, row):
         records = getattr(self, "discover_records", [])
+        self.discover_detail_queue.setEnabled(0 <= row < len(records))
         if not 0 <= row < len(records):
             self.discover_detail_title.setText("Choose a poster to explore")
             self.discover_detail_meta.setText("Movie · TV · Anime")
@@ -1653,6 +1667,14 @@ class Main(QMainWindow):
         self.discover_detail_poster.setText("Artwork unavailable")
         if isinstance(url, str) and url.startswith(("https://image.tmdb.org/t/p/", "https://s4.anilist.co/", "https://s3.anilist.co/")):
             self.fetch_poster_url(url, self.discover_detail_poster)
+
+    def queue_discovery_detail(self):
+        row = self.discover_results.currentRow()
+        if row < 0 or row >= len(getattr(self, "discover_records", [])):
+            return
+        self.discover_results.clearSelection()
+        self.discover_results.item(row).setSelected(True)
+        self.queue_discovered()
 
     def fetch_poster_url(self, url, target):
         target.setProperty("poster_url", url)
