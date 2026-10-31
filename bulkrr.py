@@ -1247,9 +1247,18 @@ class Main(QMainWindow):
             QMessageBox.warning(self, "Missing credentials", "API key unavailable in the system keyring.")
             return
         app = profile["kind"]
+        if self.worker and self.worker.isRunning():
+            QMessageBox.information(self, "Operation in progress", "Wait for the active operation before switching servers.")
+            return
+        self.connections = {}
+        self.server_data = {}
+        self.items = []
+        self.library_entries = []
+        self.refresh()
         self.url[app].setText(profile["url"])
         self.key[app].setText(secret)
         self.logmsg(f"Selected {app.title()} profile: {profile['label']}. Test connections to activate.")
+        self.statusBar().showMessage("Server changed — reconnect and review destinations before importing")
 
     def remove_extra_server(self):
         row = self.extra_list.currentRow()
@@ -1266,6 +1275,9 @@ class Main(QMainWindow):
 
     def connect_servers(self):
         self.connections = {}
+        self.server_data = {}
+        self.items = []
+        self.refresh()
         for app in ("radarr", "sonarr"):
             url = self.url[app].text().strip().rstrip("/")
             key = self.key[app].text().strip()
