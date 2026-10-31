@@ -472,6 +472,40 @@ class MainWindowSmokeTests(unittest.TestCase):
         self.assertEqual(results[0][0]["status"], "added")
         self.assertTrue(api.call_args.args[4]["addOptions"]["searchForMissingEpisodes"])
 
+    def test_analysis_stop_skips_remaining_titles_without_more_lookups(self):
+        worker = bulkrr.Worker("analyze", {}, items=[
+            "movie: First (2020)", "movie: Second (2021)", "movie: Third (2022)"])
+        results = []
+        worker.finished_data.connect(results.append)
+        worker.request_stop_after_current()
+        with patch.object(bulkrr, "get_json") as api:
+            worker.run()
+        api.assert_not_called()
+        self.assertEqual(len(results[0]), 3)
+        self.assertTrue(all(item["status"] == "skipped" for item in results[0]))
+
+    def test_bulk_skip_duplicates_and_unresolved_matches(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.items = [
+                            {"input": "Existing", "matches": [], "selected": -1,
+                             "status": "duplicate", "duplicate": {"title": "Existing"}},
+                            {"input": "Ambiguous", "matches": [], "selected": -1,
+                             "status": "review"},
+                            {"input": "Good", "matches": [], "selected": -1,
+                             "status": "ready"}]
+                        with patch.object(bulkrr.QMessageBox, "question",
+                                          return_value=bulkrr.QMessageBox.StandardButton.Yes):
+                            window.skip_all_duplicates()
+                            window.skip_all_unresolved()
+                        self.assertEqual([item["status"] for item in window.items],
+                                         ["skipped", "skipped", "ready"])
+                    finally:
+                        window.close()
+
     def test_routed_import_worker_refuses_unapproved_writes(self):
         worker = bulkrr.Worker("routed_import_execute", {}, config={
             "batches": [], "credentials": {}, "approved": False})
