@@ -3014,6 +3014,7 @@ class Main(QMainWindow):
             and (
                 not isinstance(i.get("selected"), int)
                 or isinstance(i.get("selected"), bool)
+                or i.get("selected", -1) < 0
             )
         ]
         if malformed_selection:
