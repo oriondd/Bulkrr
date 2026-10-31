@@ -45,6 +45,43 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_library_genre_recommendations_require_explicit_queue(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.library_scanned({
+                            "movies": [], "series": [], "upgrades": [],
+                            "genres": ["mystery"], "errors": [],
+                        })
+                        window.discovered([
+                            {"title": "Mysterious Story", "type": "tv", "year": 2026,
+                             "overview": "A mystery adventure", "genres": ["Mystery"]},
+                            {"title": "Cooking Hour", "type": "tv", "year": 2026,
+                             "overview": "Cooking", "genres": ["Food"]},
+                        ])
+                        window.rank_from_library()
+                        self.assertEqual(len(window.discover_records), 1)
+                        self.assertEqual(len(window.discover_source_records), 2)
+                        self.assertEqual(window.input.toPlainText(), "")
+                    finally:
+                        window.close()
+
+    def test_failed_connection_discards_stale_credentials(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        window.connections = {"radarr": {"url": "http://localhost:7878", "key": "secret"}}
+                        window.library_genres = ["mystery"]
+                        window.connection_error()
+                        self.assertEqual(window.connections, {})
+                        self.assertEqual(window.library_genres, [])
+                    finally:
+                        window.close()
+
     def test_new_phase_tabs_and_actions_construct_without_network(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
