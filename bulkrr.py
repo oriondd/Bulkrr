@@ -1614,7 +1614,16 @@ class Main(QMainWindow):
                     if cell:
                         cell.setForeground(color)
                 self.review_summary_label.setText(review_summary(self.items))
-                self.apply_review_filter()
+                # Only the changed row can enter or leave the active filter.
+                was_visible = not self.table.isRowHidden(index)
+                now_visible = self.review_row_visible(self.items[index])
+                if was_visible != now_visible:
+                    self.table.setRowHidden(index, not now_visible)
+                # A full filter pass remains available for user filter/search changes.
+                self.review_visible_count.setText(
+                    f"{sum(not self.table.isRowHidden(row) for row in range(self.table.rowCount())):,} "
+                    f"of {len(self.items):,} shown"
+                )
                 self.update_review_actions()
 
     def run_worker(self, task, items=None, config=None, done=None):
