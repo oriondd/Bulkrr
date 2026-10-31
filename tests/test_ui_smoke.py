@@ -662,6 +662,30 @@ class MainWindowSmokeTests(unittest.TestCase):
                     finally:
                         window.close()
 
+    def test_failed_resume_restores_prior_review_decisions(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
+                with patch("keyring.get_password", return_value=None):
+                    window = bulkrr.Main()
+                    try:
+                        previous = [
+                            {"input": "movie: Kept", "status": "ready", "action": "upgrade",
+                             "matches": [], "selected": -1, "message": "Manually reviewed"},
+                            {"input": "movie: Pending", "status": "review", "action": "review",
+                             "matches": [], "selected": -1,
+                             "message": "Analysis stopped before lookup"},
+                        ]
+                        window.items = [dict(item) for item in previous]
+                        window._resume_previous_items = [dict(item) for item in previous]
+                        window.active_analysis_rows = [1]
+                        window.items[1]["status"] = "working"
+                        window.resume_analysis_failed("Connection lost")
+                        self.assertEqual(window.items, previous)
+                        self.assertIsNone(window.active_analysis_rows)
+                        self.assertEqual(window._resume_previous_items, [])
+                    finally:
+                        window.close()
+
     def test_analysis_completion_clears_partial_progress_mapping(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(bulkrr, "SETTINGS", Path(folder) / "settings.json"):
