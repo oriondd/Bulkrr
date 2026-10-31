@@ -13,7 +13,7 @@ RELEASES_API = "https://api.github.com/repos/oriondd/Bulkrr/releases/latest"
 def parse_version(version):
     if not isinstance(version, str):
         raise ValueError("Version must be text")
-    value = version.lstrip("v").split("-", 1)[0]
+    value = version.removeprefix("v").split("-", 1)[0]
     parts = value.split(".")
     if len(parts) != 3 or any(not p.isdecimal() for p in parts):
         raise ValueError("Invalid semantic version")
@@ -33,7 +33,7 @@ def parse_release(payload):
         raise ValueError("Missing release metadata")
     parse_version(tag)
     parsed = urlparse(url)
-    if parsed.scheme != "https" or parsed.hostname != "github.com" or not parsed.path.startswith("/oriondd/Bulkrr/releases/tag/"):
+    if parsed.scheme != "https" or parsed.hostname != "github.com" or parsed.username or parsed.password or parsed.port or parsed.query or parsed.fragment or not parsed.path.startswith("/oriondd/Bulkrr/releases/tag/"):
         raise ValueError("Untrusted release URL")
     return {"tag": tag, "url": url, "notes": str(payload.get("body") or "")[:3000]}
 
