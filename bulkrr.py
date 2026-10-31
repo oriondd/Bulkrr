@@ -2310,7 +2310,10 @@ class Main(QMainWindow):
             for item in previous
         ]
         self._resume_previous_items = []
-        self.apply_category_decisions(items)
+        self.apply_category_decisions([
+            item for item in items
+            if item.get("message") != "Analysis stopped before lookup"
+        ])
         self.refresh()
         self.logmsg(f"Resume pass processed {len(items)} title(s)")
 
