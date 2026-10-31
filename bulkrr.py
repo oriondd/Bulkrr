@@ -854,6 +854,7 @@ class Main(QMainWindow):
         self.poster_cache = {}
         self.poster_workers = []
         self.poster_inflight = {}
+        self.poster_pending = []
         self.poster_target = None
         self.settings = self.load_settings()
         shell = QWidget()
@@ -1680,11 +1681,8 @@ class Main(QMainWindow):
             self.poster_inflight[url].append(item)
             return
         self.poster_inflight[url] = [item]
-        worker = PosterWorker(url)
-        self.poster_workers.append(worker)
-        worker.loaded.connect(self.poster_loaded)
-        worker.finished.connect(lambda: self.poster_worker_finished(worker))
-        worker.start()
+        self.poster_pending.append(url)
+        self.start_pending_posters()
 
     def apply_discovery_artwork(self, item, url, data):
         if not data or (self.discover_results.row(item) < 0 and self.dashboard_featured.row(item) < 0):
@@ -1739,11 +1737,8 @@ class Main(QMainWindow):
             self.poster_inflight[url].append(target)
             return
         self.poster_inflight[url] = [target]
-        worker = PosterWorker(url)
-        self.poster_workers.append(worker)
-        worker.loaded.connect(self.poster_loaded)
-        worker.finished.connect(lambda: self.poster_worker_finished(worker))
-        worker.start()
+        self.poster_pending.append(url)
+        self.start_pending_posters()
 
     def rank_discovery(self):
         records = getattr(self, "discover_source_records", [])
@@ -3010,9 +3005,22 @@ class Main(QMainWindow):
         worker.finished.connect(lambda: self.poster_worker_finished(worker))
         worker.start()
 
+    def start_pending_posters(self):
+        """Bound artwork requests so a large catalog does not spawn dozens of threads."""
+        while self.poster_pending and len(self.poster_workers) < 5:
+            url = self.poster_pending.pop(0)
+            if url not in self.poster_inflight:
+                continue
+            worker = PosterWorker(url)
+            self.poster_workers.append(worker)
+            worker.loaded.connect(self.poster_loaded)
+            worker.finished.connect(lambda worker=worker: self.poster_worker_finished(worker))
+            worker.start()
+
     def poster_worker_finished(self, worker):
         if worker in self.poster_workers:
             self.poster_workers.remove(worker)
+        self.start_pending_posters()
 
     def display_poster(self, target, url, data):
         if target.property("poster_url") != url:
