@@ -912,6 +912,7 @@ class Main(QMainWindow):
         )
         self.table.setAlternatingRowColors(True)
         self.table.setSortingEnabled(False)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.table.setMinimumHeight(270)
         self.table.setToolTip("Select a row to inspect its poster and metadata; use Confirm to choose an alternate match.")
         self.table.horizontalHeader().setSectionResizeMode(
