@@ -67,6 +67,7 @@ from bulkrr_discovery import normalize_discovery, queue_lines, upcoming
 from bulkrr_trending import fetch_trending_anime
 from bulkrr_recommendations import rank_candidates
 from bulkrr_genres import favorite_genres
+from bulkrr_settings import write_settings
 from bulkrr_servers import validate_profiles, legacy_profiles
 from bulkrr_updates import fetch_latest_release, update_available
 from bulkrr_sessions import save_review, load_review
@@ -1362,8 +1363,7 @@ class Main(QMainWindow):
         try:
             saved = dict(self.settings)
             saved["extra_profiles"] = validate_profiles(updated)
-            APPDIR.mkdir(parents=True, exist_ok=True)
-            SETTINGS.write_text(json.dumps(saved, indent=2), encoding="utf-8")
+            write_settings(SETTINGS, saved)
         except (OSError, ValueError) as exc:
             try:
                 keyring.delete_password("Bulkrr", "profile:" + identifier)
@@ -1436,8 +1436,7 @@ class Main(QMainWindow):
         try:
             saved = dict(self.settings)
             saved["extra_profiles"] = validate_profiles(updated)
-            APPDIR.mkdir(parents=True, exist_ok=True)
-            SETTINGS.write_text(json.dumps(saved, indent=2), encoding="utf-8")
+            write_settings(SETTINGS, saved)
         except (OSError, ValueError) as exc:
             QMessageBox.warning(self, "Could not remove profile", str(exc))
             return
@@ -1574,9 +1573,8 @@ class Main(QMainWindow):
             )
             return
         try:
-            APPDIR.mkdir(parents=True, exist_ok=True)
-            SETTINGS.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        except OSError as exc:
+            write_settings(SETTINGS, data)
+        except (OSError, ValueError) as exc:
             QMessageBox.warning(self, "Could not save preferences", str(exc))
             return
         self.settings = data
